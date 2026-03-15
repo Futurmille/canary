@@ -12,6 +12,8 @@ Production-ready, feature-level canary releases for Node.js. Route specific user
 npm install @futurmille/canary
 ```
 
+![Canary Dashboard](assets/canary-dashboard.png)
+
 ## Table of Contents
 
 - [Architecture](#architecture)
