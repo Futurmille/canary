@@ -1,5 +1,11 @@
 // Core
 export { CanaryManager } from './core/canary-manager';
+export { CanaryMetricsCollector } from './core/metrics-collector';
+export type {
+  MetricRecord,
+  VariantStats,
+  CanaryComparisonReport,
+} from './core/metrics-collector';
 
 // Types & interfaces
 export type {
@@ -31,8 +37,8 @@ export { WhitelistStrategy } from './strategies/whitelist';
 export { AttributeStrategy } from './strategies/attribute';
 
 // Express adapter
-export { canaryMiddleware, canaryGuard } from './adapters/express';
-export type { CanaryMiddlewareOptions } from './adapters/express';
+export { canaryMiddleware, canaryGuard, canaryMetricsMiddleware } from './adapters/express';
+export type { CanaryMiddlewareOptions, MetricsMiddlewareOptions } from './adapters/express';
 
 // NestJS adapter
 export { CanaryGuard, CanaryExperiment, CanaryVariant, CanaryModule } from './adapters/nestjs';

@@ -1,30 +1,47 @@
 import { Controller, Get, Post, Param, Body, HttpException, HttpStatus } from '@nestjs/common';
-import { CanaryManager } from '@canary-node/core';
+import { CanaryManager, CanaryMetricsCollector } from '@canary-node/core';
 
 /**
  * Admin controller for managing canary experiments at runtime.
+ *
+ * Provides endpoints for:
+ * - Listing experiments and their configs
+ * - Comparing performance between stable and canary (metrics)
+ * - Increasing rollout percentage
+ * - Instant rollback
  *
  * In production, protect these endpoints with an auth guard!
  */
 @Controller('admin/canary')
 export class AdminController {
+  private metrics = new CanaryMetricsCollector();
+
   constructor(private readonly canaryManager: CanaryManager) {}
+
+  /** Get the metrics collector (for wiring with middleware/interceptor) */
+  getMetricsCollector(): CanaryMetricsCollector {
+    return this.metrics;
+  }
 
   /** List all experiments and their current config */
   @Get('experiments')
   async listExperiments() {
-    const experiments = await this.canaryManager.listExperiments();
-    return { experiments };
+    return { experiments: await this.canaryManager.listExperiments() };
   }
 
-  /** Get a single experiment by name */
-  @Get('experiments/:name')
-  async getExperiment(@Param('name') name: string) {
-    const experiment = await this.canaryManager.getExperiment(name);
-    if (!experiment) {
-      throw new HttpException(`Experiment "${name}" not found`, HttpStatus.NOT_FOUND);
-    }
-    return { experiment };
+  /**
+   * Compare performance between stable and canary.
+   *
+   * Returns:
+   * - Response time stats (avg, p50, p95, p99) per variant
+   * - Error rates per variant
+   * - A verdict: 'canary-is-better' | 'canary-is-worse' | 'no-significant-difference'
+   *
+   * GET /admin/canary/:name/metrics
+   */
+  @Get(':name/metrics')
+  getMetrics(@Param('name') name: string) {
+    return this.metrics.compare(name);
   }
 
   /**
@@ -59,6 +76,7 @@ export class AdminController {
   @Post(':name/rollback')
   async rollback(@Param('name') name: string) {
     await this.canaryManager.rollback(name);
+    this.metrics.clear(name);
     return { message: `Rolled back "${name}". All users now see stable.` };
   }
 
