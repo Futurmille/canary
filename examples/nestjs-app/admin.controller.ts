@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Param, Body, HttpException, HttpStatus } from '@nestjs/common';
-import { CanaryManager, CanaryMetricsCollector } from '@canary-node/core';
+import { CanaryManager, CanaryMetricsCollector } from '@futurmille/canary-node';
 
 /**
  * Admin controller for managing canary experiments at runtime.

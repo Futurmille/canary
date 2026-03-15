@@ -9,7 +9,7 @@
 import { Module } from '@nestjs/common';
 // import { ConfigModule, ConfigService } from '@nestjs/config';
 // import Redis from 'ioredis';
-// import { CanaryModule, RedisStorage } from '@canary-node/core';
+// import { CanaryModule, RedisStorage } from '@futurmille/canary-node';
 
 /*
 @Module({

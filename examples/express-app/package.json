@@ -6,7 +6,7 @@
   },
   "dependencies": {
     "express": "^4.21.0",
-    "@canary-node/core": "file:../../"
+    "@futurmille/canary-node": "file:../../"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",

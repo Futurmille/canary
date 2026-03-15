@@ -1,9 +1,9 @@
-# @canary-node/core
+# @futurmille/canary-node
 
 Production-ready, feature-level canary releases for Node.js. Route specific users to specific features without affecting the rest of your user base.
 
 ```bash
-npm install @canary-node/core
+npm install @futurmille/canary-node
 ```
 
 ## Table of Contents
@@ -25,7 +25,8 @@ npm install @canary-node/core
   - [Express](#express)
   - [NestJS](#nestjs)
   - [Fastify](#fastify)
-  - [Hapi](#hapi)
+  - [Hono](#hono)
+  - [Other Frameworks](#other-frameworks-hapi-koa-etc)
 - [Observability Hooks](#observability-hooks)
 - [Custom Strategies](#custom-strategies)
 - [Graceful Degradation](#graceful-degradation)
@@ -69,7 +70,7 @@ npm install @canary-node/core
 ## Quick Start
 
 ```typescript
-import { CanaryManager, InMemoryStorage } from '@canary-node/core';
+import { CanaryManager, InMemoryStorage } from '@futurmille/canary-node';
 
 // 1. Create the manager with a storage backend
 const manager = new CanaryManager({
@@ -337,7 +338,7 @@ await manager.updateExperiment('search-v2', { enabled: true });
 Best for: tests, single-process dev servers, prototyping.
 
 ```typescript
-import { InMemoryStorage } from '@canary-node/core';
+import { InMemoryStorage } from '@futurmille/canary-node';
 
 const storage = new InMemoryStorage();
 
@@ -355,7 +356,7 @@ npm install ioredis
 
 ```typescript
 import Redis from 'ioredis';
-import { RedisStorage } from '@canary-node/core';
+import { RedisStorage } from '@futurmille/canary-node';
 
 const storage = new RedisStorage({
   client: new Redis({
@@ -375,7 +376,7 @@ const manager = new CanaryManager({ storage });
 Implement the `ICanaryStorage` interface to use any backend (PostgreSQL, DynamoDB, MongoDB, etc.):
 
 ```typescript
-import { ICanaryStorage, CanaryExperiment, Assignment } from '@canary-node/core';
+import { ICanaryStorage, CanaryExperiment, Assignment } from '@futurmille/canary-node';
 
 class PostgresStorage implements ICanaryStorage {
   constructor(private pool: Pool) {}
@@ -425,7 +426,7 @@ Evaluates the experiment for every request and attaches the result to `req.canar
 
 ```typescript
 import express from 'express';
-import { CanaryManager, InMemoryStorage, canaryMiddleware } from '@canary-node/core';
+import { CanaryManager, InMemoryStorage, canaryMiddleware } from '@futurmille/canary-node';
 
 const app = express();
 const manager = new CanaryManager({ storage: new InMemoryStorage() });
@@ -467,7 +468,7 @@ app.get('/checkout', (req, res) => {
 Returns 404 for non-canary users — the route doesn't exist for them:
 
 ```typescript
-import { canaryGuard } from '@canary-node/core';
+import { canaryGuard } from '@futurmille/canary-node';
 
 app.get('/checkout/v2-preview',
   canaryGuard(manager, {
@@ -493,7 +494,7 @@ The package provides a proper `CanaryModule` with `forRoot()` and `forRootAsync(
 ```typescript
 // app.module.ts
 import { Module } from '@nestjs/common';
-import { CanaryModule, InMemoryStorage } from '@canary-node/core';
+import { CanaryModule, InMemoryStorage } from '@futurmille/canary-node';
 
 @Module({
   imports: [
@@ -541,7 +542,7 @@ The `CanaryGuard` is resolved from DI — no `new`, no constructor args. The `@C
 ```typescript
 // products.controller.ts
 import { Controller, Get, Param, Req, UseGuards } from '@nestjs/common';
-import { CanaryGuard, CanaryExperiment, CanaryManager, Variant } from '@canary-node/core';
+import { CanaryGuard, CanaryExperiment, CanaryManager, Variant } from '@futurmille/canary-node';
 
 @Controller('products')
 export class ProductsController {
@@ -573,7 +574,7 @@ export class ProductsController {
 ```typescript
 // admin.controller.ts
 import { Controller, Get, Post, Param, Body } from '@nestjs/common';
-import { CanaryManager } from '@canary-node/core';
+import { CanaryManager } from '@futurmille/canary-node';
 
 @Controller('admin/canary')
 export class AdminController {
@@ -601,7 +602,7 @@ export class AdminController {
 For when you need to inject `ConfigService`, Redis connections, etc.:
 
 ```typescript
-import { CanaryModule, RedisStorage } from '@canary-node/core';
+import { CanaryModule, RedisStorage } from '@futurmille/canary-node';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 
@@ -640,43 +641,65 @@ export class AppModule {}
 
 ### Fastify
 
-Use the `CanaryManager` directly in a Fastify hook — no adapter needed:
-
 ```typescript
 import Fastify from 'fastify';
-import { CanaryManager, InMemoryStorage } from '@canary-node/core';
+import { CanaryManager, InMemoryStorage, canaryFastifyPlugin } from '@futurmille/canary-node';
 
 const fastify = Fastify();
 const manager = new CanaryManager({ storage: new InMemoryStorage() });
 
-fastify.addHook('preHandler', async (request, reply) => {
-  const userId = request.headers['x-user-id'] as string;
-  if (userId) {
-    (request as any).canaryVariant = await manager.getVariant(
-      { id: userId },
-      'checkout-v2',
-    );
-  } else {
-    (request as any).canaryVariant = 'stable';
-  }
+canaryFastifyPlugin(fastify, manager, {
+  experimentName: 'checkout-v2',
+  getUserFromRequest: (request) => {
+    const user = request.user as any; // from your auth plugin
+    return user ? { id: user.id, attributes: { plan: user.plan } } : null;
+  },
 });
 
 fastify.get('/checkout', async (request) => {
-  const variant = (request as any).canaryVariant;
-  return { variant, message: variant === 'canary' ? 'New checkout!' : 'Current checkout' };
+  const variant = (request as any).canaryVariant; // set by plugin
+  if (variant === 'canary') {
+    return { checkout: 'v2', aiRecommendations: true };
+  }
+  return { checkout: 'v1' };
 });
 ```
 
-### Hapi
+### Hono
+
+Works on Cloudflare Workers, Vercel Edge, Deno, Bun, and Node.js:
 
 ```typescript
-import Hapi from '@hapi/hapi';
-import { CanaryManager, InMemoryStorage } from '@canary-node/core';
+import { Hono } from 'hono';
+import { CanaryManager, InMemoryStorage, canaryHonoMiddleware } from '@futurmille/canary-node';
 
+const app = new Hono();
 const manager = new CanaryManager({ storage: new InMemoryStorage() });
 
-const server = Hapi.server({ port: 3000 });
+app.use('*', canaryHonoMiddleware(manager, {
+  experimentName: 'checkout-v2',
+  getUserFromContext: (c) => {
+    const userId = c.req.header('x-user-id');
+    if (!userId) return null;
+    return { id: userId, attributes: { plan: c.req.header('x-user-plan') || 'free' } };
+  },
+}));
 
+app.get('/checkout', (c) => {
+  const variant = c.get('canaryVariant'); // set by middleware
+  if (variant === 'canary') {
+    return c.json({ checkout: 'v2', aiRecommendations: true });
+  }
+  return c.json({ checkout: 'v1' });
+});
+```
+
+### Other Frameworks (Hapi, Koa, etc.)
+
+For any framework without a dedicated adapter, use `manager.getVariant()` directly. This also works for non-HTTP contexts like WebSockets, gRPC, or message queues:
+
+```typescript
+// Hapi example
 server.ext('onPreHandler', async (request, h) => {
   const userId = request.headers['x-user-id'];
   if (userId) {
@@ -690,13 +713,23 @@ server.ext('onPreHandler', async (request, h) => {
   return h.continue;
 });
 
-server.route({
-  method: 'GET',
-  path: '/checkout',
-  handler: (request) => {
-    return { variant: request.app.canaryVariant };
-  },
+// WebSocket example
+ws.on('message', async (data) => {
+  const variant = await manager.getVariant(
+    { id: socket.userId },
+    'realtime-v2',
+  );
+  // use variant to decide response format
 });
+
+// Message queue / worker example
+async function processJob(job) {
+  const variant = await manager.getVariant(
+    { id: job.userId, attributes: { plan: job.userPlan } },
+    'new-pipeline',
+  );
+  // use variant to decide processing logic
+}
 ```
 
 ## Observability Hooks
@@ -757,7 +790,7 @@ Hook errors are caught silently — they **never** break the request pipeline or
 Register your own strategy by implementing the `IAssignmentStrategy` interface:
 
 ```typescript
-import { IAssignmentStrategy, CanaryUser, StrategyConfig, Variant } from '@canary-node/core';
+import { IAssignmentStrategy, CanaryUser, StrategyConfig, Variant } from '@futurmille/canary-node';
 
 interface TimeWindowConfig extends StrategyConfig {
   type: 'time-window';
@@ -877,7 +910,7 @@ interface RollbackEvent {
 The package ships with `InMemoryStorage` specifically for test environments:
 
 ```typescript
-import { CanaryManager, InMemoryStorage } from '@canary-node/core';
+import { CanaryManager, InMemoryStorage } from '@futurmille/canary-node';
 
 describe('checkout feature', () => {
   let manager: CanaryManager;

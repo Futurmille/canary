@@ -42,7 +42,7 @@ export interface CanaryFastifyPluginOptions {
  * Usage:
  * ```ts
  * import Fastify from 'fastify';
- * import { CanaryManager, InMemoryStorage, canaryFastifyPlugin } from '@ebutrera9103/canary-node';
+ * import { CanaryManager, InMemoryStorage, canaryFastifyPlugin } from '@futurmille/canary-node';
  *
  * const fastify = Fastify();
  * const manager = new CanaryManager({ storage: new InMemoryStorage() });

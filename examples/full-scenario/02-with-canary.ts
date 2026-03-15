@@ -1,6 +1,6 @@
 /**
  * ══════════════════════════════════════════════════════════════
- * PHASE 2: INTEGRATING @canary-node/core
+ * PHASE 2: INTEGRATING @futurmille/canary-node
  * ══════════════════════════════════════════════════════════════
  *
  * The developer does 3 things:

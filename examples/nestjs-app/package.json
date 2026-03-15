@@ -10,7 +10,7 @@
     "@nestjs/platform-express": "^10.4.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "@canary-node/core": "file:../../"
+    "@futurmille/canary-node": "file:../../"
   },
   "devDependencies": {
     "ts-node": "^10.9.2",

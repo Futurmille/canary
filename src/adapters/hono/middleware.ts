@@ -41,7 +41,7 @@ export interface CanaryHonoMiddlewareOptions {
  * Usage:
  * ```ts
  * import { Hono } from 'hono';
- * import { CanaryManager, InMemoryStorage, canaryHonoMiddleware } from '@ebutrera9103/canary-node';
+ * import { CanaryManager, InMemoryStorage, canaryHonoMiddleware } from '@futurmille/canary-node';
  *
  * const app = new Hono();
  * const manager = new CanaryManager({ storage: new InMemoryStorage() });

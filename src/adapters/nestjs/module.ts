@@ -48,7 +48,7 @@ export interface CanaryModuleAsyncOptions {
 // ── The Module ───────────────────────────────────────────────────────
 
 /**
- * NestJS dynamic module for @canary-node/core.
+ * NestJS dynamic module for @futurmille/canary-node.
  *
  * Usage:
  * ```ts
@@ -159,6 +159,25 @@ export class CanaryModule {
               getUserFromRequest: opts.getUserFromRequest,
               denyStable: opts.denyStable,
             });
+          },
+          inject: [CanaryManager, CANARY_MODULE_OPTIONS],
+        },
+        // Auto-create experiments on startup (same as forRoot)
+        {
+          provide: 'CANARY_MODULE_INIT',
+          useFactory: (manager: CanaryManager, opts: CanaryModuleOptions) => {
+            return {
+              onModuleInit: async () => {
+                if (opts.experiments?.length) {
+                  for (const exp of opts.experiments) {
+                    const existing = await manager.getExperiment(exp.name);
+                    if (!existing) {
+                      await manager.createExperiment(exp.name, exp.strategies, exp.description);
+                    }
+                  }
+                }
+              },
+            };
           },
           inject: [CanaryManager, CANARY_MODULE_OPTIONS],
         },
