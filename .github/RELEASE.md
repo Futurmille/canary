@@ -24,7 +24,7 @@
    ```
 
 4. **Create a GitHub Release**
-   - Go to https://github.com/ebutrera9103/canary-node/releases/new
+   - Go to https://github.com/ebutrera9103/canary/releases/new
    - Tag: `vX.Y.Z` (must match package.json version, e.g., `v1.0.0`)
    - Title: `vX.Y.Z`
    - Description: copy the relevant section from CHANGELOG.md
@@ -42,7 +42,7 @@ You need to add an `NPM_TOKEN` secret to the GitHub repository:
 
 1. Go to https://www.npmjs.com/settings/futurmille/tokens
 2. Create a new **Automation** token (or Granular Access token with publish permissions)
-3. Go to https://github.com/ebutrera9103/canary-node/settings/secrets/actions
+3. Go to https://github.com/ebutrera9103/canary/settings/secrets/actions
 4. Click "New repository secret"
 5. Name: `NPM_TOKEN`
 6. Value: paste the token from step 2
