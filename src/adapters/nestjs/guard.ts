@@ -105,7 +105,7 @@ export class CanaryGuard implements CanActivate {
 
     req['canaryVariant'] = variant;
 
-    if (this.options.denyStable && variant !== 'canary') {
+    if (this.options.denyStable && variant === 'stable') {
       return false;
     }
 

@@ -110,7 +110,7 @@ export function canaryHonoGuard(
       }
 
       const variant = await manager.getVariant(user, experimentName);
-      if (variant !== 'canary') {
+      if (variant === 'stable') {
         return c.json({ error: 'Not found' }, 404);
       }
 

@@ -95,7 +95,7 @@ export function canaryGuard(
       }
 
       const variant = await manager.getVariant(user, experimentName);
-      if (variant !== 'canary') {
+      if (variant === 'stable') {
         res.status(404).json({ error: 'Not found' });
         return;
       }
