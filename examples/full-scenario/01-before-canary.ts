@@ -1,19 +1,19 @@
 /**
  * ══════════════════════════════════════════════════════════════
- * FASE 1: EL ESTADO ACTUAL — SIN CANARY
+ * PHASE 1: CURRENT STATE — NO CANARY
  * ══════════════════════════════════════════════════════════════
  *
- * MiTienda.com tiene un endpoint de productos. Todos los usuarios
- * ven exactamente la misma respuesta.
+ * MyStore.com has a product endpoint. All users see exactly
+ * the same response.
  *
  * Laura (enterprise) → { name: "Laptop Pro", price: 1299 }
  * Pedro (free)       → { name: "Laptop Pro", price: 1299 }
  *
- * El equipo quiere añadir reseñas con IA, pero NO quiere
- * lanzarlo a todos de golpe. Primero quiere que Laura lo pruebe.
+ * The team wants to add AI-powered reviews, but does NOT want
+ * to ship it to everyone at once. They want Laura to test it first.
  */
 
-// ── Así se ve el controller ANTES de canary ──────────────────
+// ── This is what the controller looks like BEFORE canary ─────
 
 /*
 import { Controller, Get, Param } from '@nestjs/common';
@@ -21,7 +21,7 @@ import { Controller, Get, Param } from '@nestjs/common';
 @Controller('products')
 export class ProductsController {
 
-  // Un solo endpoint, una sola respuesta para TODOS
+  // One endpoint, one response for EVERYONE
   @Get(':id')
   getProduct(@Param('id') id: string) {
     return {
@@ -35,7 +35,7 @@ export class ProductsController {
 }
 */
 
-// ── Simulación: probemos que ambos usuarios ven lo mismo ─────
+// ── Simulation: let's verify both users see the same thing ───
 
 interface Product {
   id: string;
@@ -55,22 +55,22 @@ function getProduct(productId: string): Product {
   };
 }
 
-// Laura pide el producto
+// Laura requests the product
 const lauraResponse = getProduct('laptop-1');
-console.log('Laura ve:', JSON.stringify(lauraResponse, null, 2));
+console.log('Laura sees:', JSON.stringify(lauraResponse, null, 2));
 
-// Pedro pide el producto
+// Pedro requests the product
 const pedroResponse = getProduct('laptop-1');
-console.log('Pedro ve:', JSON.stringify(pedroResponse, null, 2));
+console.log('Pedro sees:', JSON.stringify(pedroResponse, null, 2));
 
-// Ambos ven EXACTAMENTE lo mismo
-console.log('\n¿Misma respuesta?', JSON.stringify(lauraResponse) === JSON.stringify(pedroResponse));
+// Both see EXACTLY the same thing
+console.log('\nSame response?', JSON.stringify(lauraResponse) === JSON.stringify(pedroResponse));
 // → true
 
 console.log('\n───────────────────────────────────────');
-console.log('Problema: si lanzamos la v2 con reseñas IA,');
-console.log('TODOS los usuarios la ven al mismo tiempo.');
-console.log('Si tiene un bug, afecta a TODOS.');
-console.log('Solución: @canary-node/core → ver 02-with-canary.ts');
+console.log('Problem: if we ship v2 with AI reviews,');
+console.log('ALL users see it at the same time.');
+console.log('If it has a bug, it affects EVERYONE.');
+console.log('Solution: @canary-node/core → see 02-with-canary.ts');
 
 export {};

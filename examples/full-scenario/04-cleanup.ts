@@ -1,18 +1,18 @@
 /**
  * ══════════════════════════════════════════════════════════════
- * FASE 4: APAGAR EL EXPERIMENTO — Limpieza final
+ * PHASE 4: SHUT DOWN THE EXPERIMENT — Final cleanup
  * ══════════════════════════════════════════════════════════════
  *
- * La v2 ya está al 100%. Todos los usuarios ven la versión nueva.
- * Ahora hay que limpiar:
+ * v2 is at 100%. All users see the new version.
+ * Now it's time to clean up:
  *
- * 1. Borrar el experimento de canary (y sus assignments)
- * 2. Quitar el código de branching del controller
- * 3. Quitar los decoradores @CanaryExperiment y @UseGuards
+ * 1. Delete the canary experiment (and its assignments)
+ * 2. Remove the branching code from the controller
+ * 3. Remove the @CanaryExperiment and @UseGuards decorators
  *
- * El código pasa de tener un if/else a solo tener la v2.
+ * The code goes from having an if/else to just having the v2 code.
  *
- * Ejecutar: npx ts-node 04-cleanup.ts
+ * Run: npx tsx 04-cleanup.ts
  */
 
 import {
@@ -25,93 +25,93 @@ async function main() {
   const storage = new InMemoryStorage();
   const manager = new CanaryManager({ storage });
 
-  // Simular que el experimento ya existe y está al 100%
+  // Simulate the experiment already exists and is at 100%
   await manager.createExperiment('product-v2', [
     { type: 'percentage', percentage: 100 },
   ]);
 
-  // Verificar: hay un experimento activo
+  // Verify: there is an active experiment
   const before = await manager.listExperiments();
-  console.log('Experimentos activos ANTES de limpiar:', before.length);
-  console.log('  →', before.map(e => `${e.name} (enabled: ${e.enabled})`).join(', '));
+  console.log('Active experiments BEFORE cleanup:', before.length);
+  console.log(' ', before.map(e => `${e.name} (enabled: ${e.enabled})`).join(', '));
 
   // ════════════════════════════════════════════════════════════
-  // PASO 1: Borrar el experimento
+  // STEP 1: Delete the experiment
   // ════════════════════════════════════════════════════════════
   //
-  // Esto elimina:
-  // - La configuración del experimento
-  // - TODOS los assignments persistidos (sticky sessions)
+  // This removes:
+  // - The experiment configuration
+  // - ALL persisted assignments (sticky sessions)
   //
-  // En producción, esto sería un endpoint admin:
+  // In production, this would be an admin endpoint:
   //   DELETE /admin/canary/product-v2
-  //   o: curl -X DELETE http://localhost:3000/admin/canary/experiments/product-v2
+  //   or: curl -X DELETE http://localhost:3000/admin/canary/experiments/product-v2
 
-  console.log('\n── Paso 1: Borrar experimento ──');
+  console.log('\n-- Step 1: Delete experiment --');
   await manager.deleteExperiment('product-v2');
-  console.log('  Experimento "product-v2" eliminado.');
+  console.log('  Experiment "product-v2" deleted.');
 
   const after = await manager.listExperiments();
-  console.log('  Experimentos activos DESPUÉS:', after.length);
+  console.log('  Active experiments AFTER:', after.length);
 
   // ════════════════════════════════════════════════════════════
-  // PASO 2: Limpiar el controller (lo hace el dev en código)
+  // STEP 2: Clean up the controller (the dev does this in code)
   // ════════════════════════════════════════════════════════════
 
-  console.log('\n── Paso 2: El dev limpia el controller ──');
+  console.log('\n-- Step 2: Developer cleans up the controller --');
   console.log('');
-  console.log('  ANTES (con canary):');
-  console.log('  ┌─────────────────────────────────────────────────┐');
-  console.log('  │ @UseGuards(CanaryGuard)                         │');
-  console.log('  │ @CanaryExperiment("product-v2")                 │');
-  console.log('  │ @Get(":id")                                     │');
-  console.log('  │ getProduct(@Param("id") id, @Req() req) {      │');
-  console.log('  │   const variant = req.canaryVariant;            │');
-  console.log('  │                                                  │');
-  console.log('  │   if (variant === "canary") {                   │');
-  console.log('  │     return { ...producto, reviews, aiSummary }; │');
-  console.log('  │   }                                              │');
-  console.log('  │   return { ...producto };                       │');
-  console.log('  │ }                                                │');
-  console.log('  └─────────────────────────────────────────────────┘');
+  console.log('  BEFORE (with canary):');
+  console.log('  +-----------------------------------------------------+');
+  console.log('  | @UseGuards(CanaryGuard)                              |');
+  console.log('  | @CanaryExperiment("product-v2")                      |');
+  console.log('  | @Get(":id")                                          |');
+  console.log('  | getProduct(@Param("id") id, @Req() req) {           |');
+  console.log('  |   const variant = req.canaryVariant;                 |');
+  console.log('  |                                                       |');
+  console.log('  |   if (variant === "canary") {                        |');
+  console.log('  |     return { ...product, reviews, aiSummary };       |');
+  console.log('  |   }                                                   |');
+  console.log('  |   return { ...product };                             |');
+  console.log('  | }                                                     |');
+  console.log('  +-----------------------------------------------------+');
   console.log('');
-  console.log('  DESPUÉS (limpio, solo v2):');
-  console.log('  ┌─────────────────────────────────────────────────┐');
-  console.log('  │ @Get(":id")                                     │');
-  console.log('  │ getProduct(@Param("id") id) {                   │');
-  console.log('  │   return { ...producto, reviews, aiSummary };   │');
-  console.log('  │ }                                                │');
-  console.log('  └─────────────────────────────────────────────────┘');
+  console.log('  AFTER (clean, v2 only):');
+  console.log('  +-----------------------------------------------------+');
+  console.log('  | @Get(":id")                                          |');
+  console.log('  | getProduct(@Param("id") id) {                        |');
+  console.log('  |   return { ...product, reviews, aiSummary };         |');
+  console.log('  | }                                                     |');
+  console.log('  +-----------------------------------------------------+');
 
   // ════════════════════════════════════════════════════════════
-  // RESUMEN DEL CICLO COMPLETO
+  // FULL LIFECYCLE SUMMARY
   // ════════════════════════════════════════════════════════════
 
-  console.log('\n╔══════════════════════════════════════════════════════════╗');
-  console.log('║           CICLO COMPLETO DE CANARY RELEASE               ║');
-  console.log('╠══════════════════════════════════════════════════════════╣');
-  console.log('║                                                          ║');
-  console.log('║  DIA 1: Crear experimento                               ║');
-  console.log('║         → QA y enterprise ven v2                         ║');
-  console.log('║         → El resto ve v1                                 ║');
-  console.log('║                                                          ║');
-  console.log('║  DIA 2: Medir métricas                                  ║');
-  console.log('║         → Comparar latencia y errores stable vs canary   ║');
-  console.log('║         → Si va mal: rollback instantáneo                ║');
-  console.log('║                                                          ║');
-  console.log('║  DIA 3: Rollout gradual                                  ║');
-  console.log('║         → 10% → 25% → 50% → 100%                       ║');
-  console.log('║         → Los usuarios existentes mantienen su variante  ║');
-  console.log('║                                                          ║');
-  console.log('║  DIA 7: Limpieza                                        ║');
-  console.log('║         → Borrar experimento                             ║');
-  console.log('║         → Quitar if/else del controller                  ║');
-  console.log('║         → La v2 es ahora el código normal                ║');
-  console.log('║                                                          ║');
-  console.log('║  EN NINGÚN MOMENTO se hizo un deploy diferente.          ║');
-  console.log('║  UN SOLO servidor, UN SOLO deployment.                   ║');
-  console.log('║  El canary vive dentro del código como un if/else.       ║');
-  console.log('╚══════════════════════════════════════════════════════════╝');
+  console.log('\n+==========================================================+');
+  console.log('|             COMPLETE CANARY RELEASE LIFECYCLE              |');
+  console.log('+==========================================================+');
+  console.log('|                                                            |');
+  console.log('|  DAY 1: Create experiment                                 |');
+  console.log('|         -> QA and enterprise see v2                        |');
+  console.log('|         -> Everyone else sees v1                           |');
+  console.log('|                                                            |');
+  console.log('|  DAY 2: Measure metrics                                   |');
+  console.log('|         -> Compare latency and errors: stable vs canary    |');
+  console.log('|         -> If bad: instant rollback, no redeployment       |');
+  console.log('|                                                            |');
+  console.log('|  DAY 3: Gradual rollout                                   |');
+  console.log('|         -> 10% -> 25% -> 50% -> 100%                      |');
+  console.log('|         -> Existing users keep their variant (sticky)      |');
+  console.log('|                                                            |');
+  console.log('|  DAY 7: Cleanup                                           |');
+  console.log('|         -> Delete experiment                               |');
+  console.log('|         -> Remove if/else from controller                  |');
+  console.log('|         -> v2 is now the normal code                       |');
+  console.log('|                                                            |');
+  console.log('|  At NO POINT was a separate deployment needed.             |');
+  console.log('|  ONE server, ONE deployment.                               |');
+  console.log('|  The canary lives inside the code as an if/else.           |');
+  console.log('+==========================================================+');
 }
 
 main().catch(console.error);

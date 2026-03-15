@@ -1,16 +1,16 @@
 /**
  * ══════════════════════════════════════════════════════════════
- * FASE 3: MEDIR RENDIMIENTO — ¿la v2 va mejor o peor que v1?
+ * PHASE 3: MEASURE PERFORMANCE — is v2 better or worse than v1?
  * ══════════════════════════════════════════════════════════════
  *
- * Antes de abrir la v2 a más usuarios, el dev necesita saber:
- * - ¿La v2 es más lenta? (tiene que llamar a la API de IA)
- * - ¿La v2 tiene más errores?
- * - ¿Es seguro aumentar el porcentaje?
+ * Before opening v2 to more users, the dev needs to know:
+ * - Is v2 slower? (it has to call the AI API)
+ * - Does v2 have more errors?
+ * - Is it safe to increase the percentage?
  *
- * CanaryMetricsCollector compara automáticamente ambas variantes.
+ * CanaryMetricsCollector automatically compares both variants.
  *
- * Ejecutar: npx ts-node 03-measure.ts
+ * Run: npx tsx 03-measure.ts
  */
 
 import {
@@ -27,44 +27,44 @@ async function main() {
   const metrics = new CanaryMetricsCollector();
   const manager = new CanaryManager({ storage });
 
-  // Crear experimento: enterprise → canary, 10% del resto
+  // Create experiment: enterprise → canary, 10% of everyone else
   await manager.createExperiment('product-v2', [
     { type: 'attribute', attribute: 'plan', values: ['enterprise'] },
     { type: 'percentage', percentage: 10 },
   ]);
 
   // ════════════════════════════════════════════════════════════
-  // SIMULAR TRÁFICO REAL: 200 requests de diferentes usuarios
+  // SIMULATE REAL TRAFFIC: 200 requests from different users
   // ════════════════════════════════════════════════════════════
 
-  console.log('Simulando 200 requests de 100 usuarios diferentes...\n');
+  console.log('Simulating 200 requests from 100 different users...\n');
 
   const users: CanaryUser[] = [];
 
-  // 20 usuarios enterprise
+  // 20 enterprise users
   for (let i = 0; i < 20; i++) {
     users.push({ id: `enterprise-${i}`, attributes: { plan: 'enterprise' } });
   }
-  // 80 usuarios free
+  // 80 free users
   for (let i = 0; i < 80; i++) {
     users.push({ id: `free-${i}`, attributes: { plan: 'free' } });
   }
 
-  // Cada usuario hace 2 requests
+  // Each user makes 2 requests
   for (const user of users) {
     for (let req = 0; req < 2; req++) {
       const variant: Variant = await manager.getVariant(user, 'product-v2');
 
-      // Simular tiempo de respuesta:
-      // - stable: 40-60ms (solo base de datos)
-      // - canary: 50-80ms (base de datos + API de IA)
+      // Simulate response times:
+      // - stable: 40-70ms (database only)
+      // - canary: 50-80ms (database + AI API)
       const baseTime = variant === 'canary' ? 50 : 40;
       const jitter = Math.random() * 30;
       const responseTimeMs = baseTime + jitter;
 
-      // Simular errores:
+      // Simulate errors:
       // - stable: 0.5% error rate
-      // - canary: 1% error rate (la API de IA a veces falla)
+      // - canary: 1% error rate (AI API sometimes fails)
       const errorThreshold = variant === 'canary' ? 0.01 : 0.005;
       const isError = Math.random() < errorThreshold;
 
@@ -82,65 +82,65 @@ async function main() {
   }
 
   // ════════════════════════════════════════════════════════════
-  // GENERAR REPORTE DE COMPARACIÓN
+  // GENERATE COMPARISON REPORT
   // ════════════════════════════════════════════════════════════
 
   const report = metrics.compare('product-v2');
 
-  console.log('╔══════════════════════════════════════════════════════╗');
-  console.log('║        REPORTE DE COMPARACIÓN: product-v2           ║');
-  console.log('╠══════════════════════════════════════════════════════╣');
-  console.log('║                                                      ║');
-  console.log(`║  STABLE (v1 actual)                                  ║`);
-  console.log(`║    Requests totales:  ${String(report.stable.totalRequests).padEnd(6)} ║`);
-  console.log(`║    Usuarios únicos:   ${String(report.stable.uniqueUsers).padEnd(6)} ║`);
-  console.log(`║    Tiempo promedio:   ${String(report.stable.avgResponseTimeMs.toFixed(1) + 'ms').padEnd(10)} ║`);
-  console.log(`║    p95:               ${String(report.stable.p95ResponseTimeMs.toFixed(1) + 'ms').padEnd(10)} ║`);
-  console.log(`║    Tasa de error:     ${String(report.stable.errorRate.toFixed(2) + '%').padEnd(8)} ║`);
-  console.log('║                                                      ║');
-  console.log(`║  CANARY (v2 nueva)                                   ║`);
-  console.log(`║    Requests totales:  ${String(report.canary.totalRequests).padEnd(6)} ║`);
-  console.log(`║    Usuarios únicos:   ${String(report.canary.uniqueUsers).padEnd(6)} ║`);
-  console.log(`║    Tiempo promedio:   ${String(report.canary.avgResponseTimeMs.toFixed(1) + 'ms').padEnd(10)} ║`);
-  console.log(`║    p95:               ${String(report.canary.p95ResponseTimeMs.toFixed(1) + 'ms').padEnd(10)} ║`);
-  console.log(`║    Tasa de error:     ${String(report.canary.errorRate.toFixed(2) + '%').padEnd(8)} ║`);
-  console.log('║                                                      ║');
-  console.log('╠══════════════════════════════════════════════════════╣');
-  console.log(`║  Diferencia tiempo:  ${report.responseTimeDiffMs > 0 ? '+' : ''}${report.responseTimeDiffMs.toFixed(1)}ms (+ = canary más lento) ║`);
-  console.log(`║  Diferencia errores: ${report.errorRateDiffPercent > 0 ? '+' : ''}${report.errorRateDiffPercent.toFixed(2)}%                         ║`);
-  console.log(`║  VEREDICTO: ${report.verdict.padEnd(30)}       ║`);
-  console.log('╚══════════════════════════════════════════════════════╝');
+  console.log('+======================================================+');
+  console.log('|          COMPARISON REPORT: product-v2                |');
+  console.log('+======================================================+');
+  console.log('|                                                       |');
+  console.log('|  STABLE (current v1)                                  |');
+  console.log(`|    Total requests:    ${String(report.stable.totalRequests).padEnd(6)}                         |`);
+  console.log(`|    Unique users:      ${String(report.stable.uniqueUsers).padEnd(6)}                         |`);
+  console.log(`|    Avg response time: ${String(report.stable.avgResponseTimeMs.toFixed(1) + 'ms').padEnd(10)}                     |`);
+  console.log(`|    p95:               ${String(report.stable.p95ResponseTimeMs.toFixed(1) + 'ms').padEnd(10)}                     |`);
+  console.log(`|    Error rate:        ${String(report.stable.errorRate.toFixed(2) + '%').padEnd(8)}                       |`);
+  console.log('|                                                       |');
+  console.log('|  CANARY (new v2)                                      |');
+  console.log(`|    Total requests:    ${String(report.canary.totalRequests).padEnd(6)}                         |`);
+  console.log(`|    Unique users:      ${String(report.canary.uniqueUsers).padEnd(6)}                         |`);
+  console.log(`|    Avg response time: ${String(report.canary.avgResponseTimeMs.toFixed(1) + 'ms').padEnd(10)}                     |`);
+  console.log(`|    p95:               ${String(report.canary.p95ResponseTimeMs.toFixed(1) + 'ms').padEnd(10)}                     |`);
+  console.log(`|    Error rate:        ${String(report.canary.errorRate.toFixed(2) + '%').padEnd(8)}                       |`);
+  console.log('|                                                       |');
+  console.log('+------------------------------------------------------+');
+  console.log(`|  Time difference:  ${report.responseTimeDiffMs > 0 ? '+' : ''}${report.responseTimeDiffMs.toFixed(1)}ms (+ = canary is slower)    |`);
+  console.log(`|  Error difference: ${report.errorRateDiffPercent > 0 ? '+' : ''}${report.errorRateDiffPercent.toFixed(2)}%                            |`);
+  console.log(`|  VERDICT: ${report.verdict.padEnd(38)}   |`);
+  console.log('+======================================================+');
 
   // ════════════════════════════════════════════════════════════
-  // DECISIÓN: ¿QUÉ HACER?
+  // DECISION: WHAT TO DO?
   // ════════════════════════════════════════════════════════════
 
-  console.log('\n── Decisión automática basada en métricas ──\n');
+  console.log('\n-- Automatic decision based on metrics --\n');
 
   if (report.verdict === 'canary-is-worse') {
-    console.log('La v2 tiene problemas. Haciendo ROLLBACK inmediato...');
+    console.log('v2 has problems. Performing INSTANT ROLLBACK...');
     await manager.rollback('product-v2');
-    console.log('Rollback completado. Todos los usuarios ven v1.');
+    console.log('Rollback complete. All users see v1. No redeployment needed.');
 
   } else if (report.verdict === 'canary-is-better' || report.verdict === 'no-significant-difference') {
-    console.log('Las métricas son aceptables. Aumentando rollout...\n');
+    console.log('Metrics are acceptable. Increasing rollout...\n');
 
-    console.log('  Paso 1: 10% → 25%');
+    console.log('  Step 1: 10% -> 25%');
     await manager.increaseRollout('product-v2', 25);
 
-    console.log('  Paso 2: 25% → 50%');
+    console.log('  Step 2: 25% -> 50%');
     await manager.increaseRollout('product-v2', 50);
 
-    console.log('  Paso 3: 50% → 100% (todos ven v2)');
+    console.log('  Step 3: 50% -> 100% (everyone sees v2)');
     await manager.increaseRollout('product-v2', 100);
 
-    console.log('\n  Rollout completo. La v2 es ahora la versión principal.');
+    console.log('\n  Rollout complete. v2 is now the primary version.');
 
   } else {
-    console.log('Datos insuficientes. Esperando más tráfico antes de decidir.');
+    console.log('Insufficient data. Waiting for more traffic before deciding.');
   }
 
-  console.log('\n→ Siguiente paso: limpiar → ver 04-cleanup.ts');
+  console.log('\n-> Next step: clean up -> see 04-cleanup.ts');
 }
 
 main().catch(console.error);

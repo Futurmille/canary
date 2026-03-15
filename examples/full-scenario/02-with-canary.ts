@@ -1,19 +1,19 @@
 /**
  * ══════════════════════════════════════════════════════════════
- * FASE 2: INTEGRACIÓN DE @canary-node/core
+ * PHASE 2: INTEGRATING @canary-node/core
  * ══════════════════════════════════════════════════════════════
  *
- * El dev hace 3 cosas:
+ * The developer does 3 things:
  *
- * A) Configura el módulo canary con las REGLAS de targeting
- * B) Modifica el controller para que tenga DOS caminos (stable / canary)
- * C) Despliega → UN SOLO deployment contiene AMBAS versiones
+ * A) Configures the canary module with TARGETING RULES
+ * B) Modifies the controller to have TWO code paths (stable / canary)
+ * C) Deploys → ONE SINGLE deployment contains BOTH versions
  *
- * Resultado:
- *   Laura (enterprise) → ve la v2 con reseñas IA
- *   Pedro (free)       → ve la v1 normal, no nota ningún cambio
+ * Result:
+ *   Laura (enterprise) → sees v2 with AI reviews
+ *   Pedro (free)       → sees v1 as usual, notices nothing
  *
- * Ejecutar: npx ts-node 02-with-canary.ts
+ * Run: npx tsx 02-with-canary.ts
  */
 
 import {
@@ -27,7 +27,7 @@ import {
 async function main() {
 
   // ════════════════════════════════════════════════════════════
-  // A) CONFIGURACIÓN: ¿quién ve canary y quién no?
+  // A) CONFIGURATION: who sees canary and who doesn't?
   // ════════════════════════════════════════════════════════════
 
   const storage = new InMemoryStorage();
@@ -39,52 +39,52 @@ async function main() {
       onAssignment: (event) => {
         console.log(
           `   [canary] ${event.user.id} → ${event.variant} ` +
-          `(razón: ${event.reason}, cache: ${event.cached})`,
+          `(reason: ${event.reason}, cached: ${event.cached})`,
         );
       },
     },
   });
 
-  // Crear el experimento con la cadena de reglas:
+  // Create the experiment with the targeting rule chain:
   await manager.createExperiment('product-v2', [
-    // Regla 1: El equipo de QA SIEMPRE ve canary (por userId)
+    // Rule 1: QA team ALWAYS sees canary (by userId)
     { type: 'whitelist', userIds: ['qa-maria', 'qa-jose'] },
 
-    // Regla 2: Clientes enterprise SIEMPRE ven canary (por atributo del usuario)
+    // Rule 2: Enterprise customers ALWAYS see canary (by user attribute)
     { type: 'attribute', attribute: 'plan', values: ['enterprise'] },
 
-    // Regla 3: 0% del resto (empezamos cerrado, luego abrimos)
+    // Rule 3: 0% of everyone else (start closed, open later)
     { type: 'percentage', percentage: 0 },
-  ], 'Página de producto con reseñas IA');
+  ], 'Product page with AI reviews');
 
-  console.log('Experimento creado: product-v2');
-  console.log('Reglas: QA → canary, enterprise → canary, resto → 0%\n');
+  console.log('Experiment created: product-v2');
+  console.log('Rules: QA → canary, enterprise → canary, everyone else → 0%\n');
 
   // ════════════════════════════════════════════════════════════
-  // B) DEFINIR LOS USUARIOS
+  // B) DEFINE THE USERS
   // ════════════════════════════════════════════════════════════
   //
-  // En producción real, getUserFromRequest() extrae esto del JWT:
-  //   const user = req.user; // de Passport/AuthGuard
+  // In real production, getUserFromRequest() extracts this from the JWT:
+  //   const user = req.user; // from Passport/AuthGuard
   //   return { id: user.sub, attributes: { plan: user.plan } };
   //
-  // Aquí los definimos manualmente para la simulación:
+  // Here we define them manually for the simulation:
 
   const laura: CanaryUser = {
     id: 'laura-001',
-    attributes: { plan: 'enterprise', country: 'ES' },
+    attributes: { plan: 'enterprise', country: 'US' },
   };
 
   const pedro: CanaryUser = {
     id: 'pedro-042',
-    attributes: { plan: 'free', country: 'ES' },
+    attributes: { plan: 'free', country: 'US' },
   };
 
   // ════════════════════════════════════════════════════════════
-  // C) SIMULAR REQUESTS: el mismo endpoint, diferente resultado
+  // C) SIMULATE REQUESTS: same endpoint, different result
   // ════════════════════════════════════════════════════════════
 
-  // En NestJS real esto sería:
+  // In a real NestJS app this would be:
   //
   //   @UseGuards(CanaryGuard)
   //   @CanaryExperiment('product-v2')
@@ -94,35 +94,35 @@ async function main() {
   //     ...
   //   }
   //
-  // Aquí simulamos la misma lógica:
+  // Here we simulate the same logic:
 
   async function getProduct(user: CanaryUser, productId: string) {
     const start = Date.now();
 
-    // El CanaryGuard hace esto internamente:
+    // The CanaryGuard does this internally:
     const variant: Variant = await manager.getVariant(user, 'product-v2');
 
-    // El controller usa el variant para decidir qué responder:
+    // The controller uses the variant to decide what to respond:
     let response: any;
 
     if (variant === 'canary') {
-      // ── VERSIÓN NUEVA (v2): producto + reseñas + IA ──
+      // ── NEW VERSION (v2): product + reviews + AI ──
       response = {
         id: productId,
         name: 'Laptop Pro',
         price: 1299,
         currency: 'EUR',
         stock: 42,
-        // Nuevas funcionalidades canary:
+        // New canary features:
         reviews: {
           average: 4.7,
           count: 234,
-          highlights: ['Excelente rendimiento', 'Pantalla increíble'],
+          highlights: ['Excellent performance', 'Stunning display'],
         },
-        aiSummary: 'El 94% de los compradores recomienda este portátil. Destaca por su rendimiento y pantalla.',
+        aiSummary: '94% of buyers recommend this laptop. Praised for performance and display quality.',
       };
     } else {
-      // ── VERSIÓN ACTUAL (v1): producto básico ──
+      // ── CURRENT VERSION (v1): basic product ──
       response = {
         id: productId,
         name: 'Laptop Pro',
@@ -132,7 +132,7 @@ async function main() {
       };
     }
 
-    // Registrar métricas para comparar rendimiento
+    // Record metrics to compare performance later
     const elapsed = Date.now() - start;
     metrics.record({
       experiment: 'product-v2',
@@ -148,43 +148,43 @@ async function main() {
     return { variant, response };
   }
 
-  // ── Laura pide el producto ─────────────────────────────────
+  // ── Laura requests the product ────────────────────────────
 
-  console.log('═══ Laura (enterprise) pide GET /products/laptop-1 ═══');
+  console.log('=== Laura (enterprise) requests GET /products/laptop-1 ===');
   const lauraResult = await getProduct(laura, 'laptop-1');
-  console.log(`   Variante: ${lauraResult.variant}`);
-  console.log(`   Respuesta:`, JSON.stringify(lauraResult.response, null, 2));
+  console.log(`   Variant: ${lauraResult.variant}`);
+  console.log(`   Response:`, JSON.stringify(lauraResult.response, null, 2));
 
-  // ── Pedro pide el producto ─────────────────────────────────
+  // ── Pedro requests the product ────────────────────────────
 
-  console.log('\n═══ Pedro (free) pide GET /products/laptop-1 ═══');
+  console.log('\n=== Pedro (free) requests GET /products/laptop-1 ===');
   const pedroResult = await getProduct(pedro, 'laptop-1');
-  console.log(`   Variante: ${pedroResult.variant}`);
-  console.log(`   Respuesta:`, JSON.stringify(pedroResult.response, null, 2));
+  console.log(`   Variant: ${pedroResult.variant}`);
+  console.log(`   Response:`, JSON.stringify(pedroResult.response, null, 2));
 
-  // ── Verificar sesiones sticky ──────────────────────────────
+  // ── Verify sticky sessions ────────────────────────────────
 
-  console.log('\n═══ Laura pide OTRA VEZ (sticky session) ═══');
+  console.log('\n=== Laura requests AGAIN (sticky session) ===');
   const lauraAgain = await getProduct(laura, 'laptop-1');
-  console.log(`   Variante: ${lauraAgain.variant} (misma que antes, cacheada en storage)`);
+  console.log(`   Variant: ${lauraAgain.variant} (same as before, cached in storage)`);
 
-  console.log('\n═══ Pedro pide OTRA VEZ (sticky session) ═══');
+  console.log('\n=== Pedro requests AGAIN (sticky session) ===');
   const pedroAgain = await getProduct(pedro, 'laptop-1');
-  console.log(`   Variante: ${pedroAgain.variant} (misma que antes, cacheada en storage)`);
+  console.log(`   Variant: ${pedroAgain.variant} (same as before, cached in storage)`);
 
-  // ── Resumen ────────────────────────────────────────────────
+  // ── Summary ───────────────────────────────────────────────
 
-  console.log('\n╔══════════════════════════════════════════════════╗');
-  console.log('║  Laura (enterprise): ve v2 con reseñas + IA     ║');
-  console.log('║  Pedro (free):       ve v1 normal               ║');
-  console.log('║                                                  ║');
-  console.log('║  Pedro NO SABE que la v2 existe.                 ║');
-  console.log('║  Laura prueba la v2 en producción real.          ║');
-  console.log('║  Si la v2 tiene un bug, solo Laura se ve afectada║');
-  console.log('║  Pedro sigue trabajando normal.                  ║');
-  console.log('╚══════════════════════════════════════════════════╝');
+  console.log('\n+==================================================+');
+  console.log('|  Laura (enterprise): sees v2 with reviews + AI   |');
+  console.log('|  Pedro (free):       sees v1 as usual            |');
+  console.log('|                                                   |');
+  console.log('|  Pedro DOES NOT KNOW v2 exists.                  |');
+  console.log('|  Laura tests v2 in real production.              |');
+  console.log('|  If v2 has a bug, only Laura is affected.        |');
+  console.log('|  Pedro keeps working normally.                   |');
+  console.log('+==================================================+');
 
-  console.log('\n→ Siguiente paso: medir rendimiento → ver 03-measure.ts');
+  console.log('\n-> Next step: measure performance -> see 03-measure.ts');
 }
 
 main().catch(console.error);
