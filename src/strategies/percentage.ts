@@ -7,7 +7,7 @@ import {
 
 /**
  * Deterministic percentage-based assignment.
- * Uses a simple hash of userId + experimentName to produce a stable bucket 0-99.
+ * Uses a simple hash of userId to produce a stable bucket 0-99.
  * This means the same user always lands in the same bucket for a given experiment,
  * even across restarts — no storage lookup needed for the decision itself.
  */
@@ -18,7 +18,7 @@ export class PercentageStrategy implements IAssignmentStrategy {
     if (config.type !== 'percentage') return null;
 
     const bucket = this.hash(user.id) % 100;
-    return bucket < config.percentage ? 'canary' : 'stable';
+    return bucket < config.percentage ? (config.variant ?? 'canary') : 'stable';
   }
 
   /**

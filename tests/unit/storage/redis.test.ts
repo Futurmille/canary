@@ -25,6 +25,17 @@ function createMockRedisClient() {
       store.set(key, value);
       return 1;
     }),
+    expire: jest.fn(async (_key: string, _seconds: number) => 1),
+    scanStream: jest.fn((options: { match: string; count?: number }) => {
+      const prefix = options.match.replace('*', '');
+      const matched = Array.from(store.keys()).filter((k) => k.startsWith(prefix));
+      // Return an async iterable that yields one batch
+      return {
+        async *[Symbol.asyncIterator]() {
+          yield matched;
+        },
+      };
+    }),
   };
 }
 
@@ -135,6 +146,24 @@ describe('RedisStorage', () => {
       await storage.saveAssignmentIfNotExists(makeAssignment());
       const result = await storage.saveAssignmentIfNotExists(makeAssignment());
       expect(result).toBe(false);
+    });
+
+    it('sets TTL via expire when ttlSeconds is provided', async () => {
+      await storage.saveAssignmentIfNotExists(makeAssignment(), 3600);
+      expect(client.expire).toHaveBeenCalledWith(
+        'test:assign:exp-1:u1',
+        3600,
+      );
+    });
+
+    it('does not call expire when ttlSeconds is 0', async () => {
+      await storage.saveAssignmentIfNotExists(makeAssignment(), 0);
+      expect(client.expire).not.toHaveBeenCalled();
+    });
+
+    it('does not call expire when ttlSeconds is undefined', async () => {
+      await storage.saveAssignmentIfNotExists(makeAssignment());
+      expect(client.expire).not.toHaveBeenCalled();
     });
   });
 

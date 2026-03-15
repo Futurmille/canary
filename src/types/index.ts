@@ -1,5 +1,6 @@
 // ─── Variant ────────────────────────────────────────────────
-export type Variant = 'stable' | 'canary';
+export type Variant = string;
+export type BuiltInVariant = 'stable' | 'canary';
 
 // ─── User context passed to every assignment decision ───────
 export interface CanaryUser {
@@ -17,6 +18,8 @@ export interface CanaryExperiment {
   enabled: boolean;
   /** Strategy configurations — evaluated in order, first match wins */
   strategies: StrategyConfig[];
+  /** Available variants for this experiment (default: ['stable', 'canary']) */
+  variants?: string[];
   /** ISO timestamp of creation */
   createdAt: string;
   /** ISO timestamp of last modification */
@@ -32,17 +35,23 @@ export type StrategyConfig =
 export interface PercentageStrategyConfig {
   type: 'percentage';
   percentage: number; // 0-100
+  /** Target variant for matched users (default: 'canary') */
+  variant?: string;
 }
 
 export interface WhitelistStrategyConfig {
   type: 'whitelist';
   userIds: string[];
+  /** Target variant for matched users (default: 'canary') */
+  variant?: string;
 }
 
 export interface AttributeStrategyConfig {
   type: 'attribute';
   attribute: string;
   values: Array<string | number | boolean>;
+  /** Target variant for matched users (default: 'canary') */
+  variant?: string;
 }
 
 // ─── Assignment record (what gets persisted) ────────────────
@@ -87,6 +96,8 @@ export interface CanaryConfig {
   hooks?: CanaryHooks;
   /** Default variant when experiment is disabled or on error */
   defaultVariant?: Variant;
+  /** TTL for sticky assignments in seconds. 0 = no expiry (default). */
+  assignmentTTLSeconds?: number;
 }
 
 // ─── Storage port ───────────────────────────────────────────
@@ -104,7 +115,8 @@ export interface ICanaryStorage {
   deleteAllAssignments(experimentName: string): Promise<number>;
 
   // Atomic "set if not exists" — for thread-safe sticky assignment
-  saveAssignmentIfNotExists(assignment: Assignment): Promise<boolean>;
+  // ttlSeconds: optional TTL in seconds (0 or undefined = no expiry)
+  saveAssignmentIfNotExists(assignment: Assignment, ttlSeconds?: number): Promise<boolean>;
 }
 
 // ─── Strategy port ──────────────────────────────────────────

@@ -6,7 +6,7 @@ import {
 } from '../types';
 
 /**
- * Attribute-based strategy — assigns canary if a user attribute matches any of the target values.
+ * Attribute-based strategy — assigns a variant if a user attribute matches any of the target values.
  * Example: country=US, plan=enterprise, role=admin.
  */
 export class AttributeStrategy implements IAssignmentStrategy {
@@ -21,6 +21,6 @@ export class AttributeStrategy implements IAssignmentStrategy {
 
     // Loose comparison to handle string/number coercion ("1" == 1)
     const matches = config.values.some((v) => String(v) === String(userValue));
-    return matches ? 'canary' : null;
+    return matches ? (config.variant ?? 'canary') : null;
   }
 }

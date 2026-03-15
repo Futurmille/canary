@@ -6,7 +6,7 @@ import {
 } from '../types';
 
 /**
- * Whitelist strategy — assigns canary variant to explicitly listed user IDs.
+ * Whitelist strategy — assigns a variant to explicitly listed user IDs.
  * Use for internal testing, beta users, or specific account targeting.
  */
 export class WhitelistStrategy implements IAssignmentStrategy {
@@ -16,6 +16,6 @@ export class WhitelistStrategy implements IAssignmentStrategy {
     if (config.type !== 'whitelist') return null;
 
     const idSet = new Set(config.userIds);
-    return idSet.has(user.id) ? 'canary' : null;
+    return idSet.has(user.id) ? (config.variant ?? 'canary') : null;
   }
 }

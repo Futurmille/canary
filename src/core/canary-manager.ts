@@ -29,12 +29,14 @@ export class CanaryManager {
   private storage: ICanaryStorage;
   private hooks: CanaryHooks;
   private defaultVariant: Variant;
+  private assignmentTTLSeconds: number;
   private strategies: Map<string, IAssignmentStrategy>;
 
   constructor(config: CanaryConfig) {
     this.storage = config.storage;
     this.hooks = config.hooks ?? {};
     this.defaultVariant = config.defaultVariant ?? 'stable';
+    this.assignmentTTLSeconds = config.assignmentTTLSeconds ?? 0;
 
     // Register built-in strategies
     this.strategies = new Map<string, IAssignmentStrategy>();
@@ -142,7 +144,7 @@ export class CanaryManager {
         }
       }
 
-      // 4. Persist (atomic)
+      // 4. Persist (atomic, with optional TTL)
       const assignment: Assignment = {
         userId: user.id,
         experimentName,
@@ -151,7 +153,8 @@ export class CanaryManager {
         reason,
       };
 
-      const saved = await this.storage.saveAssignmentIfNotExists(assignment);
+      const ttl = this.assignmentTTLSeconds;
+      const saved = await this.storage.saveAssignmentIfNotExists(assignment, ttl > 0 ? ttl : undefined);
       if (!saved) {
         // Another process won the race — use their assignment
         const raceWinner = await this.storage.getAssignment(user.id, experimentName);

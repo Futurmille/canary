@@ -10,6 +10,7 @@ export type {
 // Types & interfaces
 export type {
   Variant,
+  BuiltInVariant,
   CanaryUser,
   CanaryExperiment as CanaryExperimentConfig,
   CanaryConfig,
@@ -39,6 +40,14 @@ export { AttributeStrategy } from './strategies/attribute';
 // Express adapter
 export { canaryMiddleware, canaryGuard, canaryMetricsMiddleware } from './adapters/express';
 export type { CanaryMiddlewareOptions, MetricsMiddlewareOptions } from './adapters/express';
+
+// Fastify adapter
+export { canaryFastifyPlugin } from './adapters/fastify';
+export type { CanaryFastifyPluginOptions } from './adapters/fastify';
+
+// Hono adapter (edge runtimes: Cloudflare Workers, Vercel Edge, Deno, Bun)
+export { canaryHonoMiddleware, canaryHonoGuard } from './adapters/hono';
+export type { CanaryHonoMiddlewareOptions } from './adapters/hono';
 
 // NestJS adapter
 export { CanaryGuard, CanaryExperiment, CanaryVariant, CanaryModule } from './adapters/nestjs';
