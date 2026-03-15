@@ -27,6 +27,7 @@ npm install @futurmille/canary
   - [Fastify](#fastify)
   - [Hono](#hono)
   - [Other Frameworks](#other-frameworks-hapi-koa-etc)
+- [Dashboard](#dashboard)
 - [Observability Hooks](#observability-hooks)
 - [Custom Strategies](#custom-strategies)
 - [Graceful Degradation](#graceful-degradation)
@@ -729,6 +730,105 @@ async function processJob(job) {
     'new-pipeline',
   );
   // use variant to decide processing logic
+}
+```
+
+## Dashboard
+
+Built-in browser dashboard for monitoring experiments and making rollout/rollback decisions. Self-contained HTML — zero frontend dependencies.
+
+### Setup
+
+```typescript
+import {
+  CanaryManager,
+  CanaryMetricsCollector,
+  canaryDashboard,
+  canaryMiddleware,
+  canaryMetricsMiddleware,
+} from '@futurmille/canary';
+
+const manager = new CanaryManager({ storage });
+const metrics = new CanaryMetricsCollector();
+
+// Canary middleware (resolves variant per request)
+app.use(canaryMiddleware(manager, { experimentName: 'product-v2', getUserFromRequest }));
+
+// Metrics middleware (records response time + errors per variant)
+app.use(canaryMetricsMiddleware(metrics, { experimentName: 'product-v2' }));
+
+// Dashboard — one line
+app.use('/canary', canaryDashboard(manager, metrics));
+```
+
+Open `http://localhost:3000/canary` in your browser.
+
+### What it shows
+
+For each experiment:
+
+- **Status** — ENABLED / DISABLED badge
+- **Strategies** — whitelist (3), plan: enterprise, rollout: 10%
+- **Verdict** — "Canary is performing better — safe to increase rollout" / "consider rollback" / "not enough data"
+- **Side-by-side metrics** — stable vs canary: requests, unique users, avg/p95 latency, error rate with visual bars
+- **Time & error diff** — "+13.2ms, -0.87%"
+
+### Action buttons
+
+- **Increase Rollout** — prompts for a new percentage (e.g., 10% → 50%)
+- **Rollback** — clears all assignments, disables experiment, all users see stable immediately
+- **Re-enable** — appears after rollback, re-enables the experiment
+- **Delete** — removes the experiment and all its assignments permanently
+
+### Auto-refresh
+
+The dashboard reloads every 10 seconds so metrics update in real time.
+
+### JSON API
+
+The dashboard also exposes a JSON API for programmatic access:
+
+```bash
+# All experiment data + metrics
+GET /canary/api/data
+
+# Increase rollout
+POST /canary/api/product-v2/rollout   { "percentage": 50 }
+
+# Rollback
+POST /canary/api/product-v2/rollback
+
+# Re-enable
+POST /canary/api/product-v2/enable
+
+# Delete
+DELETE /canary/api/product-v2
+```
+
+### NestJS
+
+In NestJS, mount the dashboard on any route using a controller:
+
+```typescript
+import { Controller, All, Req, Res } from '@nestjs/common';
+import { CanaryManager, CanaryMetricsCollector, canaryDashboard } from '@futurmille/canary';
+
+@Controller('canary')
+export class CanaryDashboardController {
+  private handler: ReturnType<typeof canaryDashboard>;
+
+  constructor(private manager: CanaryManager) {
+    this.handler = canaryDashboard(manager, new CanaryMetricsCollector(), {
+      basePath: '/canary',
+    });
+  }
+
+  @All('*')
+  handleDashboard(@Req() req: any, @Res() res: any) {
+    this.handler(req, res, () => {
+      res.status(404).json({ error: 'Not found' });
+    });
+  }
 }
 ```
 
