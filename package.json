@@ -1,0 +1,40 @@
+{
+  "name": "@canary-node/core",
+  "version": "1.0.0",
+  "description": "Production-ready feature-level canary releases for Node.js applications",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "jest --coverage",
+    "test:watch": "jest --watch",
+    "lint": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "canary",
+    "feature-flag",
+    "rollout",
+    "ab-testing",
+    "progressive-delivery"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "ioredis": ">=5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "ioredis": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.14.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.4",
+    "typescript": "^5.5.0"
+  }
+}
