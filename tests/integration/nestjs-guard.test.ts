@@ -407,6 +407,57 @@ describe('CanaryModule', () => {
       );
       expect(tokenProvider.useExisting).toBe(CanaryManager);
     });
+
+    it('CANARY_MODULE_INIT creates experiments on init', async () => {
+      const storage = new InMemoryStorage();
+      const mod = CanaryModule.forRootAsync({
+        useFactory: () => ({
+          storage,
+          getUserFromRequest: () => null,
+          experiments: [
+            { name: 'async-exp', strategies: [{ type: 'percentage' as const, percentage: 10 }] },
+          ],
+        }),
+      });
+
+      const initProvider = mod.providers!.find((p: any) => p.provide === 'CANARY_MODULE_INIT');
+      expect(initProvider).toBeDefined();
+
+      // Simulate DI: call the factory with manager + options
+      const managerFactory = mod.providers!.find((p: any) => p.provide === CanaryManager);
+      const opts = { storage, getUserFromRequest: () => null, experiments: [
+        { name: 'async-exp', strategies: [{ type: 'percentage' as const, percentage: 10 }] },
+      ]};
+      const mgr = managerFactory.useFactory(opts);
+
+      const initService = initProvider.useFactory(mgr, opts);
+      await initService.onModuleInit();
+
+      const exp = await mgr.getExperiment('async-exp');
+      expect(exp).not.toBeNull();
+      expect(exp!.strategies[0]).toEqual({ type: 'percentage', percentage: 10 });
+    });
+
+    it('CANARY_MODULE_INIT skips when no experiments configured', async () => {
+      const storage = new InMemoryStorage();
+      const mod = CanaryModule.forRootAsync({
+        useFactory: () => ({
+          storage,
+          getUserFromRequest: () => null,
+        }),
+      });
+
+      const initProvider = mod.providers!.find((p: any) => p.provide === 'CANARY_MODULE_INIT');
+      const managerFactory = mod.providers!.find((p: any) => p.provide === CanaryManager);
+      const opts = { storage, getUserFromRequest: () => null };
+      const mgr = managerFactory.useFactory(opts);
+
+      const initService = initProvider.useFactory(mgr, opts);
+      await initService.onModuleInit(); // should not throw
+
+      const exps = await mgr.listExperiments();
+      expect(exps).toHaveLength(0);
+    });
   });
 });
 
