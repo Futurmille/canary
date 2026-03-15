@@ -31,6 +31,7 @@ npm install @canary-node/core
 - [API Reference](#api-reference)
 - [Testing](#testing)
 - [Real-World Scenario](#real-world-scenario)
+- [Runnable Examples](#runnable-examples)
 
 ## Architecture
 
@@ -371,83 +372,157 @@ app.get('/checkout/v2-preview',
 
 ### NestJS
 
-#### Setup as a provider
+The package provides a proper `CanaryModule` with `forRoot()` and `forRootAsync()` — the standard NestJS dynamic module pattern.
+
+#### Step 1: Register the module
 
 ```typescript
-// canary.module.ts
+// app.module.ts
 import { Module } from '@nestjs/common';
-import { CanaryManager, RedisStorage } from '@canary-node/core';
-import Redis from 'ioredis';
+import { CanaryModule, InMemoryStorage } from '@canary-node/core';
 
 @Module({
-  providers: [
-    {
-      provide: CanaryManager,
-      useFactory: () => {
-        return new CanaryManager({
-          storage: new RedisStorage({
-            client: new Redis(process.env.REDIS_URL),
-          }),
-        });
+  imports: [
+    CanaryModule.forRoot({
+      // Storage backend (swap to RedisStorage for production)
+      storage: new InMemoryStorage(),
+
+      // How to extract a user from the request — set once, used by all guards
+      getUserFromRequest: (req) => {
+        const user = req['user'] as any; // from your auth middleware / passport
+        if (!user) return null;
+        return {
+          id: user.id,
+          attributes: { plan: user.plan, country: user.country },
+        };
       },
-    },
+
+      // Auto-create experiments on startup (won't overwrite existing)
+      experiments: [
+        {
+          name: 'product-page-v2',
+          strategies: [
+            { type: 'whitelist', userIds: ['admin-1', 'qa-1'] },
+            { type: 'attribute', attribute: 'plan', values: ['enterprise'] },
+            { type: 'percentage', percentage: 10 },
+          ],
+        },
+      ],
+
+      // Observability hooks
+      hooks: {
+        onAssignment: (e) => console.log(`[canary] ${e.user.id} → ${e.variant}`),
+        onRollback: (e) => console.log(`[rollback] ${e.experiment}`),
+      },
+    }),
   ],
-  exports: [CanaryManager],
 })
-export class CanaryModule {}
+export class AppModule {}
 ```
 
-#### Use in controllers with Guard + Decorator
+#### Step 2: Use in controllers
+
+The `CanaryGuard` is resolved from DI — no `new`, no constructor args. The `@CanaryExperiment()` decorator tells the guard which experiment to evaluate.
 
 ```typescript
-// search.controller.ts
-import { Controller, Get, UseGuards, Req } from '@nestjs/common';
-import { CanaryManager, CanaryGuard, CanaryExperiment } from '@canary-node/core';
+// products.controller.ts
+import { Controller, Get, Param, Req, UseGuards } from '@nestjs/common';
+import { CanaryGuard, CanaryExperiment, CanaryManager, Variant } from '@canary-node/core';
 
-@Controller('search')
-export class SearchController {
-  constructor(private canaryManager: CanaryManager) {}
+@Controller('products')
+export class ProductsController {
+  constructor(private readonly canaryManager: CanaryManager) {}
 
-  @UseGuards(new CanaryGuard(this.canaryManager, {
-    getUserFromRequest: (req) => {
-      const user = req['user'] as { id: string; plan: string };
-      return user ? { id: user.id, attributes: { plan: user.plan } } : null;
-    },
-  }))
-  @CanaryExperiment('search-v2')
-  @Get()
-  search(@Req() req: any) {
-    if (req.canaryVariant === 'canary') {
-      return { engine: 'v2', results: [] };
+  @UseGuards(CanaryGuard)              // ← resolved from DI, no manual instantiation
+  @CanaryExperiment('product-page-v2') // ← which experiment to evaluate
+  @Get(':id')
+  async getProduct(@Param('id') id: string, @Req() req: any) {
+    const variant: Variant = req.canaryVariant; // set by CanaryGuard
+
+    if (variant === 'canary') {
+      return {
+        id,
+        name: 'Widget',
+        price: 29.99,
+        reviews: { average: 4.5, count: 128 },       // new canary feature
+        aiSummary: 'Customers love this widget.',      // new canary feature
+      };
     }
-    return { engine: 'v1', results: [] };
+
+    return { id, name: 'Widget', price: 29.99 };
   }
 }
 ```
 
-**Guard options:**
+#### Step 3 (optional): Admin endpoints for runtime control
+
+```typescript
+// admin.controller.ts
+import { Controller, Get, Post, Param, Body } from '@nestjs/common';
+import { CanaryManager } from '@canary-node/core';
+
+@Controller('admin/canary')
+export class AdminController {
+  constructor(private readonly canaryManager: CanaryManager) {}
+
+  @Get('experiments')
+  listExperiments() {
+    return this.canaryManager.listExperiments();
+  }
+
+  @Post(':name/rollout')
+  increaseRollout(@Param('name') name: string, @Body() body: { percentage: number }) {
+    return this.canaryManager.increaseRollout(name, body.percentage);
+  }
+
+  @Post(':name/rollback')
+  rollback(@Param('name') name: string) {
+    return this.canaryManager.rollback(name);
+  }
+}
+```
+
+#### Async configuration (production)
+
+For when you need to inject `ConfigService`, Redis connections, etc.:
+
+```typescript
+import { CanaryModule, RedisStorage } from '@canary-node/core';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import Redis from 'ioredis';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot(),
+    CanaryModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        storage: new RedisStorage({
+          client: new Redis(config.get('REDIS_URL')),
+          prefix: `${config.get('APP_NAME')}:canary:`,
+        }),
+        getUserFromRequest: (req) => {
+          const user = req['user'] as any;
+          return user ? { id: user.sub, attributes: { plan: user.plan } } : null;
+        },
+      }),
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+**Module options:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
+| `storage` | `ICanaryStorage` | required | Storage backend |
 | `getUserFromRequest` | `(req) => CanaryUser \| null` | required | Extract user from request |
-| `denyStable` | `boolean` | `false` | Return 403 for stable users |
-
-#### Create experiments on bootstrap
-
-```typescript
-// main.ts
-async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-  const canary = app.get(CanaryManager);
-
-  await canary.createExperiment('search-v2', [
-    { type: 'attribute', attribute: 'plan', values: ['enterprise'] },
-    { type: 'percentage', percentage: 5 },
-  ]);
-
-  await app.listen(3000);
-}
-```
+| `hooks` | `CanaryHooks` | `undefined` | Observability hooks |
+| `defaultVariant` | `Variant` | `'stable'` | Fallback variant |
+| `isGlobal` | `boolean` | `true` | Register globally (available in all modules) |
+| `denyStable` | `boolean` | `false` | Guards deny non-canary users (403) |
+| `experiments` | `Array<{name, strategies}>` | `undefined` | Auto-create experiments on init |
 
 ### Fastify
 
@@ -745,6 +820,23 @@ await manager.increaseRollout('new-payment-flow', 100);
 // Day 14: Fully rolled out — clean up
 await manager.deleteExperiment('new-payment-flow');
 ```
+
+## Runnable Examples
+
+The repo includes complete, runnable example apps:
+
+- **`examples/express-app/`** — Express server with canary middleware, guards, and admin endpoints
+- **`examples/nestjs-app/`** — NestJS app with `CanaryModule.forRoot()`, guard + decorator pattern, and admin controller
+
+```bash
+# Express
+cd examples/express-app && npm install && npm start
+
+# NestJS
+cd examples/nestjs-app && npm install && npm start
+```
+
+Both examples run on `http://localhost:3000` with curl-friendly endpoints for testing.
 
 ## License
 

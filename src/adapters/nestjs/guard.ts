@@ -31,19 +31,46 @@ export interface CanaryGuardOptions {
  * Reads the experiment name from @CanaryExperiment() metadata,
  * resolves the variant, and attaches it to req.canaryVariant.
  *
- * Usage:
+ * ## Usage with CanaryModule (recommended)
+ *
+ * When using CanaryModule.forRoot(), the guard is pre-configured and available via DI:
+ *
  * ```ts
- * @UseGuards(new CanaryGuard(canaryManager, { getUserFromRequest: ... }))
- * @CanaryExperiment('new-search')
- * @Get('/search')
- * search(@Req() req) { req.canaryVariant }
+ * @Controller('products')
+ * @UseGuards(CanaryGuard) // ← no `new`, no args — resolved from DI
+ * export class ProductsController {
+ *
+ *   @CanaryExperiment('new-product-page')
+ *   @Get(':id')
+ *   getProduct(@Req() req) {
+ *     return req.canaryVariant === 'canary' ? ... : ...;
+ *   }
+ * }
+ * ```
+ *
+ * ## Standalone usage (without module)
+ *
+ * ```ts
+ * const guard = new CanaryGuard(manager, { getUserFromRequest: ... });
  * ```
  */
 export class CanaryGuard implements CanActivate {
-  constructor(
-    private manager: CanaryManager,
-    private options: CanaryGuardOptions,
-  ) {}
+  private manager: CanaryManager;
+  private options: CanaryGuardOptions;
+
+  constructor(manager: CanaryManager, options: CanaryGuardOptions);
+  constructor(manager: CanaryManager);
+  constructor(manager: CanaryManager, options?: CanaryGuardOptions) {
+    this.manager = manager;
+    this.options = options ?? {
+      getUserFromRequest: () => null,
+    };
+  }
+
+  /** Allow setting options after construction (used by CanaryModule DI wiring) */
+  setOptions(options: CanaryGuardOptions): void {
+    this.options = options;
+  }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const handler = context.getHandler();
@@ -53,12 +80,18 @@ export class CanaryGuard implements CanActivate {
     );
 
     if (!experimentName) {
-      // No experiment configured — allow through
+      // No @CanaryExperiment decorator — allow through, no variant set
       return true;
     }
 
     const req = context.switchToHttp().getRequest();
-    const user = this.options.getUserFromRequest(req);
+
+    let user: CanaryUser | null = null;
+    try {
+      user = this.options.getUserFromRequest(req);
+    } catch {
+      // If user extraction fails, fall through to stable
+    }
 
     let variant: Variant = 'stable';
 

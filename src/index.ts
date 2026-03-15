@@ -30,8 +30,11 @@ export { PercentageStrategy } from './strategies/percentage';
 export { WhitelistStrategy } from './strategies/whitelist';
 export { AttributeStrategy } from './strategies/attribute';
 
-// Framework adapters
+// Express adapter
 export { canaryMiddleware, canaryGuard } from './adapters/express';
 export type { CanaryMiddlewareOptions } from './adapters/express';
-export { CanaryGuard, CanaryExperiment, CanaryVariant } from './adapters/nestjs';
-export type { CanaryGuardOptions } from './adapters/nestjs';
+
+// NestJS adapter
+export { CanaryGuard, CanaryExperiment, CanaryVariant, CanaryModule } from './adapters/nestjs';
+export { CANARY_MANAGER, CANARY_MODULE_OPTIONS } from './adapters/nestjs';
+export type { CanaryGuardOptions, CanaryModuleOptions, CanaryModuleAsyncOptions } from './adapters/nestjs';

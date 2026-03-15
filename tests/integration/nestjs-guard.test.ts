@@ -1,6 +1,13 @@
 import { CanaryManager } from '../../src/core/canary-manager';
 import { InMemoryStorage } from '../../src/storage/in-memory';
-import { CanaryGuard, CanaryExperiment, CANARY_EXPERIMENT_KEY } from '../../src/adapters/nestjs';
+import {
+  CanaryGuard,
+  CanaryExperiment,
+  CanaryModule,
+  CANARY_EXPERIMENT_KEY,
+  CANARY_MANAGER,
+  CANARY_MODULE_OPTIONS,
+} from '../../src/adapters/nestjs';
 import { CanaryUser } from '../../src/types';
 
 // ── Polyfill Reflect metadata methods ───────────────────────
@@ -39,10 +46,10 @@ class TestController {
 
 // ── Mock NestJS ExecutionContext ─────────────────────────────
 
-function mockContext(handler: Function, userId?: string): any {
+function mockContext(handler: Function, userId?: string, attrs?: Record<string, string>): any {
   const req: Record<string, unknown> = {};
   if (userId) {
-    req['user'] = { id: userId };
+    req['user'] = { id: userId, ...attrs };
   }
 
   return {
@@ -119,27 +126,294 @@ describe('NestJS CanaryGuard', () => {
     expect(result).toBe(false);
   });
 
+  it('falls back to stable when getVariant throws', async () => {
+    jest.spyOn(manager, 'getVariant').mockRejectedValueOnce(new Error('explode'));
+
+    const ctx = mockContext(controller.searchHandler, 'user-1');
+    const result = await guard.canActivate(ctx);
+    expect(result).toBe(true);
+    expect(ctx.switchToHttp().getRequest()['canaryVariant']).toBe('stable');
+  });
+
   it('falls back to stable when getUserFromRequest throws', async () => {
     const throwGuard = new CanaryGuard(manager, {
       getUserFromRequest: () => { throw new Error('parse error'); },
     });
 
     const ctx = mockContext(controller.searchHandler, 'user-1');
-    // getUserFromRequest throw happens outside the try/catch for getVariant,
-    // so it falls into stable because user is null-ish path won't work.
-    // Instead test by making getVariant itself throw:
-    jest.spyOn(manager, 'getVariant').mockRejectedValueOnce(new Error('explode'));
-
-    const ctx2 = mockContext(controller.searchHandler, 'user-1');
-    const result = await guard.canActivate(ctx2);
+    const result = await throwGuard.canActivate(ctx);
     expect(result).toBe(true);
-    expect(ctx2.switchToHttp().getRequest()['canaryVariant']).toBe('stable');
+    expect(ctx.switchToHttp().getRequest()['canaryVariant']).toBe('stable');
+  });
+
+  it('constructor works with just manager — default getUserFromRequest returns null', async () => {
+    const minimalGuard = new CanaryGuard(manager);
+    // With default options, getUserFromRequest returns null → user is null → stable
+    const ctx = mockContext(controller.searchHandler, 'user-1');
+    const result = await minimalGuard.canActivate(ctx);
+    expect(result).toBe(true);
+    expect(ctx.switchToHttp().getRequest()['canaryVariant']).toBe('stable');
+  });
+
+  it('setOptions updates the guard configuration', async () => {
+    const minimalGuard = new CanaryGuard(manager);
+    minimalGuard.setOptions({ getUserFromRequest });
+
+    const ctx = mockContext(controller.searchHandler, 'user-1');
+    const result = await minimalGuard.canActivate(ctx);
+    expect(result).toBe(true);
+    expect(ctx.switchToHttp().getRequest()['canaryVariant']).toBe('canary');
   });
 });
 
+// ── CanaryModule ─────────────────────────────────────────────
+
+describe('CanaryModule', () => {
+  describe('forRoot', () => {
+    it('returns a valid DynamicModule shape', () => {
+      const storage = new InMemoryStorage();
+      const mod = CanaryModule.forRoot({
+        storage,
+        getUserFromRequest: (req) => {
+          const u = req['user'] as { id: string } | undefined;
+          return u ? { id: u.id } : null;
+        },
+      });
+
+      expect(mod.module).toBe(CanaryModule);
+      expect(mod.global).toBe(true);
+      expect(mod.providers).toBeDefined();
+      expect(mod.exports).toBeDefined();
+
+      // Should export CanaryManager and CanaryGuard
+      expect(mod.exports).toContain(CanaryManager);
+      expect(mod.exports).toContain(CanaryGuard);
+      expect(mod.exports).toContain(CANARY_MANAGER);
+    });
+
+    it('respects isGlobal: false', () => {
+      const mod = CanaryModule.forRoot({
+        storage: new InMemoryStorage(),
+        getUserFromRequest: () => null,
+        isGlobal: false,
+      });
+      expect(mod.global).toBe(false);
+    });
+
+    it('provides CanaryManager as a real instance', () => {
+      const storage = new InMemoryStorage();
+      const mod = CanaryModule.forRoot({
+        storage,
+        getUserFromRequest: () => null,
+      });
+
+      // Find the CanaryManager provider
+      const managerProvider = mod.providers!.find(
+        (p: any) => p.provide === CanaryManager,
+      );
+      expect(managerProvider).toBeDefined();
+      expect(managerProvider.useValue).toBeInstanceOf(CanaryManager);
+    });
+
+    it('provides CanaryGuard via factory', () => {
+      const mod = CanaryModule.forRoot({
+        storage: new InMemoryStorage(),
+        getUserFromRequest: () => null,
+      });
+
+      const guardProvider = mod.providers!.find(
+        (p: any) => p.provide === CanaryGuard,
+      );
+      expect(guardProvider).toBeDefined();
+      expect(guardProvider.useFactory).toBeInstanceOf(Function);
+      // Invoke the factory — should return a CanaryGuard
+      const guard = guardProvider.useFactory();
+      expect(guard).toBeInstanceOf(CanaryGuard);
+    });
+
+    it('includes experiment init provider when experiments are specified', () => {
+      const mod = CanaryModule.forRoot({
+        storage: new InMemoryStorage(),
+        getUserFromRequest: () => null,
+        experiments: [
+          { name: 'test-exp', strategies: [{ type: 'percentage', percentage: 50 }] },
+        ],
+      });
+
+      const initProvider = mod.providers!.find(
+        (p: any) => p.provide === 'CANARY_MODULE_INIT',
+      );
+      expect(initProvider).toBeDefined();
+    });
+
+    it('experiment init creates experiments that do not exist', async () => {
+      const storage = new InMemoryStorage();
+      const mod = CanaryModule.forRoot({
+        storage,
+        getUserFromRequest: () => null,
+        experiments: [
+          { name: 'exp-a', strategies: [{ type: 'percentage', percentage: 10 }], description: 'Test' },
+          { name: 'exp-b', strategies: [{ type: 'whitelist', userIds: ['alice'] }] },
+        ],
+      });
+
+      const initProvider = mod.providers!.find(
+        (p: any) => p.provide === 'CANARY_MODULE_INIT',
+      );
+      const initService = initProvider.useFactory();
+      await initService.onModuleInit();
+
+      // Experiments should be created
+      const managerProvider = mod.providers!.find((p: any) => p.provide === CanaryManager);
+      const manager = managerProvider.useValue as CanaryManager;
+      expect(await manager.getExperiment('exp-a')).not.toBeNull();
+      expect(await manager.getExperiment('exp-b')).not.toBeNull();
+    });
+
+    it('experiment init does not overwrite existing experiments', async () => {
+      const storage = new InMemoryStorage();
+      const mod = CanaryModule.forRoot({
+        storage,
+        getUserFromRequest: () => null,
+        experiments: [
+          { name: 'exp-a', strategies: [{ type: 'percentage', percentage: 99 }] },
+        ],
+      });
+
+      // Pre-create the experiment with different config
+      const managerProvider = mod.providers!.find((p: any) => p.provide === CanaryManager);
+      const manager = managerProvider.useValue as CanaryManager;
+      await manager.createExperiment('exp-a', [{ type: 'percentage', percentage: 5 }]);
+
+      const initProvider = mod.providers!.find(
+        (p: any) => p.provide === 'CANARY_MODULE_INIT',
+      );
+      const initService = initProvider.useFactory();
+      await initService.onModuleInit();
+
+      // Should keep the original config (percentage: 5), not overwrite
+      const exp = await manager.getExperiment('exp-a');
+      expect(exp!.strategies[0]).toEqual({ type: 'percentage', percentage: 5 });
+    });
+
+    it('does not include init provider when no experiments specified', () => {
+      const mod = CanaryModule.forRoot({
+        storage: new InMemoryStorage(),
+        getUserFromRequest: () => null,
+      });
+
+      const initProvider = mod.providers!.find(
+        (p: any) => p.provide === 'CANARY_MODULE_INIT',
+      );
+      expect(initProvider).toBeUndefined();
+    });
+  });
+
+  describe('forRootAsync', () => {
+    it('returns a valid DynamicModule shape', () => {
+      const mod = CanaryModule.forRootAsync({
+        useFactory: () => ({
+          storage: new InMemoryStorage(),
+          getUserFromRequest: () => null,
+        }),
+      });
+
+      expect(mod.module).toBe(CanaryModule);
+      expect(mod.global).toBe(true);
+      expect(mod.providers).toBeDefined();
+      expect(mod.exports).toContain(CanaryManager);
+      expect(mod.exports).toContain(CanaryGuard);
+    });
+
+    it('respects isGlobal: false', () => {
+      const mod = CanaryModule.forRootAsync({
+        isGlobal: false,
+        useFactory: () => ({
+          storage: new InMemoryStorage(),
+          getUserFromRequest: () => null,
+        }),
+      });
+      expect(mod.global).toBe(false);
+    });
+
+    it('provides options via factory', () => {
+      const mod = CanaryModule.forRootAsync({
+        inject: ['CONFIG_TOKEN'],
+        useFactory: (config: any) => ({
+          storage: new InMemoryStorage(),
+          getUserFromRequest: () => null,
+        }),
+      });
+
+      const optionsProvider = mod.providers!.find(
+        (p: any) => p.provide === CANARY_MODULE_OPTIONS,
+      );
+      expect(optionsProvider).toBeDefined();
+      expect(optionsProvider.inject).toEqual(['CONFIG_TOKEN']);
+    });
+
+    it('CanaryManager factory receives options and returns instance', () => {
+      const mod = CanaryModule.forRootAsync({
+        useFactory: () => ({
+          storage: new InMemoryStorage(),
+          getUserFromRequest: () => null,
+        }),
+      });
+
+      const managerProvider = mod.providers!.find(
+        (p: any) => p.provide === CanaryManager,
+      );
+      expect(managerProvider.useFactory).toBeInstanceOf(Function);
+      expect(managerProvider.inject).toEqual([CANARY_MODULE_OPTIONS]);
+
+      // Call the factory with mock options
+      const opts = {
+        storage: new InMemoryStorage(),
+        getUserFromRequest: () => null,
+      };
+      const result = managerProvider.useFactory(opts);
+      expect(result).toBeInstanceOf(CanaryManager);
+    });
+
+    it('CanaryGuard factory receives manager + options', () => {
+      const mod = CanaryModule.forRootAsync({
+        useFactory: () => ({
+          storage: new InMemoryStorage(),
+          getUserFromRequest: () => null,
+        }),
+      });
+
+      const guardProvider = mod.providers!.find(
+        (p: any) => p.provide === CanaryGuard,
+      );
+      expect(guardProvider.inject).toEqual([CanaryManager, CANARY_MODULE_OPTIONS]);
+
+      const manager = new CanaryManager({ storage: new InMemoryStorage() });
+      const opts = { getUserFromRequest: () => null, denyStable: false };
+      const guard = guardProvider.useFactory(manager, opts);
+      expect(guard).toBeInstanceOf(CanaryGuard);
+    });
+
+    it('CANARY_MANAGER token uses same instance as CanaryManager class', () => {
+      const mod = CanaryModule.forRootAsync({
+        useFactory: () => ({
+          storage: new InMemoryStorage(),
+          getUserFromRequest: () => null,
+        }),
+      });
+
+      const tokenProvider = mod.providers!.find(
+        (p: any) => p.provide === CANARY_MANAGER,
+      );
+      expect(tokenProvider.useExisting).toBe(CanaryManager);
+    });
+  });
+});
+
+// ── CanaryVariant decorator ──────────────────────────────────
+
 describe('CanaryVariant decorator', () => {
   it('stores parameter indices as metadata', () => {
-    // Import CanaryVariant
     const { CanaryVariant, CANARY_VARIANT_KEY } = require('../../src/adapters/nestjs');
 
     class TestCtrl {

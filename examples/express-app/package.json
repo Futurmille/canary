@@ -1,0 +1,16 @@
+{
+  "name": "canary-express-example",
+  "private": true,
+  "scripts": {
+    "start": "npx ts-node server.ts"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "@canary-node/core": "file:../../"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.0"
+  }
+}
