@@ -78,11 +78,14 @@ export class RedisStorage implements ICanaryStorage {
     return raw ? (JSON.parse(raw) as Assignment) : null;
   }
 
-  async saveAssignment(assignment: Assignment): Promise<void> {
-    await this.client.set(
-      this.assignKey(assignment.userId, assignment.experimentName),
-      JSON.stringify(assignment),
-    );
+  async saveAssignment(assignment: Assignment, ttlSeconds?: number): Promise<void> {
+    const key = this.assignKey(assignment.userId, assignment.experimentName);
+    const value = JSON.stringify(assignment);
+    if (ttlSeconds && ttlSeconds > 0) {
+      await this.client.set(key, value, 'EX', ttlSeconds);
+    } else {
+      await this.client.set(key, value);
+    }
   }
 
   async deleteAssignment(userId: string, experimentName: string): Promise<void> {

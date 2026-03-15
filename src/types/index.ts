@@ -92,7 +92,7 @@ export interface ICanaryStorage {
   listExperiments(): Promise<CanaryExperiment[]>;
 
   getAssignment(userId: string, experimentName: string): Promise<Assignment | null>;
-  saveAssignment(assignment: Assignment): Promise<void>;
+  saveAssignment(assignment: Assignment, ttlSeconds?: number): Promise<void>;
   deleteAssignment(userId: string, experimentName: string): Promise<void>;
   deleteAllAssignments(experimentName: string): Promise<number>;
 

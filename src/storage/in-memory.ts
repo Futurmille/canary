@@ -51,9 +51,12 @@ export class InMemoryStorage implements ICanaryStorage {
     return stored.assignment;
   }
 
-  async saveAssignment(assignment: Assignment): Promise<void> {
+  async saveAssignment(assignment: Assignment, ttlSeconds?: number): Promise<void> {
     const key = this.assignmentKey(assignment.userId, assignment.experimentName);
-    this.assignments.set(key, { assignment: { ...assignment } });
+    this.assignments.set(key, {
+      assignment: { ...assignment },
+      expiresAt: ttlSeconds && ttlSeconds > 0 ? Date.now() + ttlSeconds * 1000 : undefined,
+    });
   }
 
   async deleteAssignment(userId: string, experimentName: string): Promise<void> {
