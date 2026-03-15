@@ -41,3 +41,6 @@ export type { CanaryHonoMiddlewareOptions } from './adapters/hono';
 export { CanaryGuard, CanaryExperiment, CanaryVariant, CanaryModule } from './adapters/nestjs';
 export { CANARY_MANAGER, CANARY_MODULE_OPTIONS } from './adapters/nestjs';
 export type { CanaryGuardOptions, CanaryModuleOptions, CanaryModuleAsyncOptions } from './adapters/nestjs';
+
+export { canaryDashboard, renderDashboard } from './dashboard';
+export type { DashboardOptions, DashboardData } from './dashboard';
