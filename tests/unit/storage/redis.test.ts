@@ -110,6 +110,24 @@ describe('RedisStorage', () => {
       expect(await storage.getAssignment('u1', 'exp-1')).toEqual(a);
     });
 
+    it('saves with TTL using SET EX', async () => {
+      await storage.saveAssignment(makeAssignment(), 3600);
+      expect(client.set).toHaveBeenCalledWith(
+        'test:assign:exp-1:u1',
+        expect.any(String),
+        'EX',
+        3600,
+      );
+    });
+
+    it('saves without TTL using plain SET', async () => {
+      await storage.saveAssignment(makeAssignment());
+      expect(client.set).toHaveBeenCalledWith(
+        'test:assign:exp-1:u1',
+        expect.any(String),
+      );
+    });
+
     it('deletes specific assignment', async () => {
       await storage.saveAssignment(makeAssignment());
       await storage.deleteAssignment('u1', 'exp-1');

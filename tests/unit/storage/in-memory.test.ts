@@ -87,6 +87,18 @@ describe('InMemoryStorage', () => {
       expect(await storage.getAssignment('user-1', 'test-exp')).toBeNull();
     });
 
+    it('saveAssignment with TTL expires after duration', async () => {
+      await storage.saveAssignment(makeAssignment(), 1);
+      expect(await storage.getAssignment('user-1', 'test-exp')).not.toBeNull();
+      await new Promise((r) => setTimeout(r, 1100));
+      expect(await storage.getAssignment('user-1', 'test-exp')).toBeNull();
+    }, 5000);
+
+    it('saveAssignment without TTL does not expire', async () => {
+      await storage.saveAssignment(makeAssignment());
+      expect(await storage.getAssignment('user-1', 'test-exp')).not.toBeNull();
+    });
+
     it('deleteAllAssignments removes only the target experiment', async () => {
       await storage.saveAssignment(makeAssignment('u1', 'exp-a'));
       await storage.saveAssignment(makeAssignment('u2', 'exp-a'));
