@@ -71,6 +71,6 @@ console.log('\n─────────────────────�
 console.log('Problem: if we ship v2 with AI reviews,');
 console.log('ALL users see it at the same time.');
 console.log('If it has a bug, it affects EVERYONE.');
-console.log('Solution: @futurmille/canary-node → see 02-with-canary.ts');
+console.log('Solution: @futurmille/canary → see 02-with-canary.ts');
 
 export {};

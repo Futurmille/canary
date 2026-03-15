@@ -1,5 +1,5 @@
 /**
- * Express + @futurmille/canary-node — Complete canary release example
+ * Express + @futurmille/canary — Complete canary release example
  *
  * This server demonstrates the FULL lifecycle:
  * 1. Define WHO gets canary (strategies + getUserFromRequest)
@@ -42,7 +42,7 @@ import {
   canaryGuard,
   canaryMetricsMiddleware,
   CanaryUser,
-} from '@futurmille/canary-node';
+} from '@futurmille/canary';
 
 const app = express();
 app.use(express.json());

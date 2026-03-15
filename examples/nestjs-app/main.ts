@@ -1,5 +1,5 @@
 /**
- * NestJS + @futurmille/canary-node — Real-world canary release example
+ * NestJS + @futurmille/canary — Real-world canary release example
  *
  * This app demonstrates:
  * - CanaryModule.forRoot() with automatic experiment creation

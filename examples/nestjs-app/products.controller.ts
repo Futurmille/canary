@@ -4,7 +4,7 @@ import {
   CanaryExperiment,
   CanaryManager,
   Variant,
-} from '@futurmille/canary-node';
+} from '@futurmille/canary';
 
 /**
  * Product controller demonstrating canary releases on specific endpoints.

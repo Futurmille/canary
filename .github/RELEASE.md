@@ -34,7 +34,7 @@
    - Run tests on Node.js 20
    - Verify the tag matches package.json version
    - Build the TypeScript
-   - Publish to npm as `@futurmille/canary-node`
+   - Publish to npm as `@futurmille/canary`
 
 ## First-time setup
 

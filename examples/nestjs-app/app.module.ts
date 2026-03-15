@@ -3,7 +3,7 @@ import {
   CanaryModule,
   CanaryManager,
   InMemoryStorage,
-} from '@futurmille/canary-node';
+} from '@futurmille/canary';
 import { ProductsController } from './products.controller';
 import { AdminController } from './admin.controller';
 

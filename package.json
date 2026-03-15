@@ -1,5 +1,5 @@
 {
-  "name": "@futurmille/canary-node",
+  "name": "@futurmille/canary",
   "version": "1.0.0",
   "description": "Production-ready feature-level canary releases for Node.js applications",
   "main": "dist/index.js",

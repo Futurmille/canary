@@ -26,7 +26,7 @@ Both see the same response. One controller, one code path.
 
 ---
 
-## Phase 2: Developer integrates @futurmille/canary-node
+## Phase 2: Developer integrates @futurmille/canary
 
 The developer:
 1. Installs the package
