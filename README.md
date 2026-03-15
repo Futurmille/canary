@@ -13,6 +13,7 @@ npm install @canary-node/core
 - [Core Concepts](#core-concepts)
   - [Experiments](#experiments)
   - [Strategies](#strategies)
+  - [How User Targeting Works](#how-user-targeting-works)
   - [Sticky Sessions](#sticky-sessions)
   - [Gradual Rollout](#gradual-rollout)
   - [Instant Rollback](#instant-rollback)
@@ -167,6 +168,119 @@ await manager.createExperiment('checkout-v2', [
   { type: 'percentage', percentage: 10 },
 ]);
 ```
+
+### How user targeting works
+
+The system needs two things to decide who gets canary:
+
+1. **`getUserFromRequest`** — extracts user identity + attributes from the incoming request
+2. **Strategies** — rules that match against those attributes
+
+The connection between them:
+
+```
+                  getUserFromRequest                              Strategies
+                  ══════════════════                              ══════════
+Request ──→ Extract from JWT/session/headers ──→ { id, attributes } ──→ Evaluate rules ──→ 'canary' | 'stable'
+```
+
+#### Real-world `getUserFromRequest` examples
+
+**JWT / Passport (most common in production):**
+
+```typescript
+getUserFromRequest: (req) => {
+  // Passport populates req.user after AuthGuard runs
+  const user = req['user'] as any;
+  if (!user) return null; // unauthenticated → stable
+
+  return {
+    id: user.sub,            // ← used by whitelist strategy
+    attributes: {
+      plan: user.plan,       // ← used by attribute strategy (plan = enterprise?)
+      role: user.role,       // ← used by attribute strategy (role = admin?)
+      country: user.country, // ← used by attribute strategy (country = US?)
+      company: user.orgId,   // ← used by attribute strategy (specific company?)
+    },
+  };
+},
+```
+
+**Session-based auth:**
+
+```typescript
+getUserFromRequest: (req) => {
+  const session = req['session'] as any;
+  if (!session?.userId) return null;
+
+  return {
+    id: session.userId,
+    attributes: {
+      plan: session.plan,
+      role: session.role,
+    },
+  };
+},
+```
+
+**API key / header-based (for testing or internal services):**
+
+```typescript
+getUserFromRequest: (req) => {
+  const headers = req['headers'] as Record<string, string>;
+  const userId = headers['x-user-id'];
+  if (!userId) return null;
+
+  return {
+    id: userId,
+    attributes: {
+      plan: headers['x-user-plan'] || 'free',
+      country: headers['x-user-country'] || 'US',
+    },
+  };
+},
+```
+
+#### Targeting scenarios
+
+| I want to canary... | Strategy to use | Example |
+|---|---|---|
+| Specific user IDs (QA, internal team) | `whitelist` | `{ type: 'whitelist', userIds: ['qa-1', 'dev-alice'] }` |
+| All enterprise customers | `attribute` | `{ type: 'attribute', attribute: 'plan', values: ['enterprise'] }` |
+| Users in US and Canada | `attribute` | `{ type: 'attribute', attribute: 'country', values: ['US', 'CA'] }` |
+| Admin users only | `attribute` | `{ type: 'attribute', attribute: 'role', values: ['admin'] }` |
+| A specific company/org | `attribute` | `{ type: 'attribute', attribute: 'company', values: ['acme-corp'] }` |
+| 5% of all users randomly | `percentage` | `{ type: 'percentage', percentage: 5 }` |
+| Beta opt-in users | `attribute` | `{ type: 'attribute', attribute: 'beta', values: [true] }` |
+
+#### Combining strategies (priority chain)
+
+Strategies are evaluated **top to bottom**. First match wins, rest are skipped:
+
+```typescript
+await manager.createExperiment('new-dashboard', [
+  // Priority 1: QA team — always canary, regardless of anything else
+  { type: 'whitelist', userIds: ['qa-maria', 'qa-john'] },
+
+  // Priority 2: Enterprise customers — always canary
+  { type: 'attribute', attribute: 'plan', values: ['enterprise', 'business'] },
+
+  // Priority 3: US users only (not ready for other regions yet)
+  { type: 'attribute', attribute: 'country', values: ['US'] },
+
+  // Priority 4: 0% of remaining users (will increase gradually)
+  { type: 'percentage', percentage: 0 },
+]);
+
+// Later: start rolling out to 5% of remaining users
+await manager.increaseRollout('new-dashboard', 5);
+```
+
+In this example:
+- `qa-maria` → **canary** (matched by whitelist, stops here)
+- Enterprise user in France → **canary** (matched by attribute plan, stops here)
+- Free user in US → **canary** (matched by attribute country, stops here)
+- Free user in Germany → **stable** or **canary** (only if in the 5% bucket)
 
 ### Sticky Sessions
 
