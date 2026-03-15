@@ -1,5 +1,11 @@
 # @futurmille/canary
 
+[![CI](https://github.com/ebutrera9103/canary-node/actions/workflows/ci.yml/badge.svg)](https://github.com/ebutrera9103/canary-node/actions/workflows/ci.yml)
+[![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue.svg)](https://www.typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-18%20%7C%2020%20%7C%2022-green.svg)](https://nodejs.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Zero Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](https://www.npmjs.com/package/@futurmille/canary)
+
 Production-ready, feature-level canary releases for Node.js. Route specific users to specific features without affecting the rest of your user base.
 
 ```bash

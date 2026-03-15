@@ -29,8 +29,14 @@ jobs:
       - name: Lint (type-check)
         run: npm run lint
 
+      - name: Security audit
+        run: npm audit --omit=dev --audit-level=high || true
+
       - name: Test with coverage
         run: npm test
 
       - name: Build
         run: npm run build
+
+      - name: Verify package contents
+        run: npm pack --dry-run
