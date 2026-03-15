@@ -6,16 +6,12 @@ import {
 
 interface StoredAssignment {
   assignment: Assignment;
-  expiresAt?: number; // epoch ms, undefined = no expiry
+  expiresAt?: number;
 }
 
 /**
- * In-memory storage adapter — ideal for tests and single-process dev servers.
- *
- * IMPORTANT: This adapter is NOT multi-process safe. The saveAssignmentIfNotExists
- * method uses a simple check-then-set pattern, which is fine for single-process
- * environments but not atomic across multiple processes. For multi-process
- * production deployments, use RedisStorage which uses atomic SETNX.
+ * In-memory storage adapter for tests and single-process dev servers.
+ * NOT multi-process safe — use RedisStorage for production.
  */
 export class InMemoryStorage implements ICanaryStorage {
   private experiments = new Map<string, CanaryExperiment>();
@@ -88,7 +84,6 @@ export class InMemoryStorage implements ICanaryStorage {
     return true;
   }
 
-  /** Test helper — wipe all data */
   clear(): void {
     this.experiments.clear();
     this.assignments.clear();

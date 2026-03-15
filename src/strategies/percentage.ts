@@ -5,12 +5,6 @@ import {
   Variant,
 } from '../types';
 
-/**
- * Deterministic percentage-based assignment.
- * Uses a simple hash of userId to produce a stable bucket 0-99.
- * This means the same user always lands in the same bucket for a given experiment,
- * even across restarts — no storage lookup needed for the decision itself.
- */
 export class PercentageStrategy implements IAssignmentStrategy {
   readonly type = 'percentage';
 
@@ -21,16 +15,13 @@ export class PercentageStrategy implements IAssignmentStrategy {
     return bucket < config.percentage ? (config.variant ?? 'canary') : 'stable';
   }
 
-  /**
-   * FNV-1a 32-bit hash — fast, good distribution, zero dependencies.
-   * We only need uniform distribution across 100 buckets, not cryptographic strength.
-   */
+  /** FNV-1a 32-bit hash */
   private hash(input: string): number {
-    let h = 0x811c9dc5; // FNV offset basis
+    let h = 0x811c9dc5;
     for (let i = 0; i < input.length; i++) {
       h ^= input.charCodeAt(i);
-      h = Math.imul(h, 0x01000193); // FNV prime
+      h = Math.imul(h, 0x01000193);
     }
-    return h >>> 0; // ensure unsigned
+    return h >>> 0;
   }
 }

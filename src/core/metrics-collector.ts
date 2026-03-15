@@ -1,88 +1,51 @@
 import { Variant } from '../types';
 
-/**
- * A single recorded metric data point for a request.
- */
 export interface MetricRecord {
   experiment: string;
   variant: Variant;
   userId: string;
   endpoint: string;
-  /** Response time in milliseconds */
   responseTimeMs: number;
-  /** HTTP status code */
   statusCode: number;
-  /** Whether this response was an error (status >= 400) */
   isError: boolean;
   timestamp: string;
 }
 
-/**
- * Aggregated stats for one variant of one experiment.
- */
 export interface VariantStats {
   variant: Variant;
-  /** Total number of requests recorded */
   totalRequests: number;
-  /** Number of error responses (status >= 400) */
   errorCount: number;
-  /** Error rate as a percentage (0-100) */
   errorRate: number;
-  /** Average response time in ms */
   avgResponseTimeMs: number;
-  /** p50 response time in ms */
   p50ResponseTimeMs: number;
-  /** p95 response time in ms */
   p95ResponseTimeMs: number;
-  /** p99 response time in ms */
   p99ResponseTimeMs: number;
-  /** Unique users seen */
   uniqueUsers: number;
 }
 
-/**
- * Comparison report between stable and canary variants.
- */
 export interface CanaryComparisonReport {
   experiment: string;
   generatedAt: string;
   stable: VariantStats;
   canary: VariantStats;
-  /** Positive = canary is slower, negative = canary is faster */
   responseTimeDiffMs: number;
-  /** Positive = canary has more errors, negative = canary has fewer */
   errorRateDiffPercent: number;
-  /** Simple verdict based on error rate and p95 */
   verdict: 'canary-is-better' | 'canary-is-worse' | 'no-significant-difference' | 'insufficient-data';
 }
 
-/**
- * In-process metrics collector for canary experiments.
- *
- * Collects response time and error rate per variant, then produces
- * a comparison report so you can decide whether to increase rollout or rollback.
- *
- * For production, wire the `onMetric` callback to your metrics backend
- * (Datadog, Prometheus, CloudWatch) instead of relying on in-memory storage.
- */
 export class CanaryMetricsCollector {
   private records = new Map<string, MetricRecord[]>();
   private onMetric?: (record: MetricRecord) => void;
   private maxRecordsPerExperiment: number;
 
   constructor(options?: {
-    /** Callback fired for every recorded metric — use to forward to external systems */
     onMetric?: (record: MetricRecord) => void;
-    /** Max records to keep in memory per experiment (default: 10000) */
     maxRecordsPerExperiment?: number;
   }) {
     this.onMetric = options?.onMetric;
     this.maxRecordsPerExperiment = options?.maxRecordsPerExperiment ?? 10_000;
   }
 
-  /**
-   * Record a metric for a request that was served under a canary experiment.
-   */
   record(metric: MetricRecord): void {
     const key = metric.experiment;
     let records = this.records.get(key);
@@ -93,7 +56,6 @@ export class CanaryMetricsCollector {
 
     records.push(metric);
 
-    // Evict oldest records if over limit
     if (records.length > this.maxRecordsPerExperiment) {
       records.splice(0, records.length - this.maxRecordsPerExperiment);
     }
@@ -102,14 +64,11 @@ export class CanaryMetricsCollector {
       try {
         this.onMetric(metric);
       } catch {
-        // Never break the caller
+        // never break the caller
       }
     }
   }
 
-  /**
-   * Generate a comparison report between stable and canary for an experiment.
-   */
   compare(experimentName: string): CanaryComparisonReport {
     const records = this.records.get(experimentName) ?? [];
 
@@ -144,23 +103,14 @@ export class CanaryMetricsCollector {
     };
   }
 
-  /**
-   * Get all recorded experiments.
-   */
   getExperiments(): string[] {
     return Array.from(this.records.keys());
   }
 
-  /**
-   * Clear all records for an experiment.
-   */
   clear(experimentName: string): void {
     this.records.delete(experimentName);
   }
 
-  /**
-   * Clear all records.
-   */
   clearAll(): void {
     this.records.clear();
   }

@@ -5,10 +5,6 @@ import {
   Variant,
 } from '../types';
 
-/**
- * Attribute-based strategy — assigns a variant if a user attribute matches any of the target values.
- * Example: country=US, plan=enterprise, role=admin.
- */
 export class AttributeStrategy implements IAssignmentStrategy {
   readonly type = 'attribute';
 
@@ -19,7 +15,6 @@ export class AttributeStrategy implements IAssignmentStrategy {
     const userValue = user.attributes[config.attribute];
     if (userValue === undefined) return null;
 
-    // Loose comparison to handle string/number coercion ("1" == 1)
     const matches = config.values.some((v) => String(v) === String(userValue));
     return matches ? (config.variant ?? 'canary') : null;
   }

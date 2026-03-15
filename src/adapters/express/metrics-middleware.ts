@@ -1,9 +1,6 @@
 import { CanaryMetricsCollector } from '../../core/metrics-collector';
 import { Variant } from '../../types';
 
-/**
- * Minimal Express types — no dependency on @types/express.
- */
 interface Request {
   url?: string;
   method?: string;
@@ -20,29 +17,11 @@ interface Response {
 type NextFunction = (err?: unknown) => void;
 
 export interface MetricsMiddlewareOptions {
-  /** Which experiment to record metrics for */
   experimentName: string;
-  /** Extract user ID from request (defaults to x-user-id header) */
   getUserId?: (req: Request) => string;
 }
 
-/**
- * Express middleware that automatically records response time and error rate
- * for every request that has a canaryVariant set.
- *
- * Place this AFTER canaryMiddleware in the middleware chain.
- *
- * ```ts
- * app.use(canaryMiddleware(manager, { ... }));
- * app.use(canaryMetricsMiddleware(collector, { experimentName: 'checkout-v2' }));
- * ```
- *
- * Then compare variants:
- * ```ts
- * const report = collector.compare('checkout-v2');
- * console.log(report.verdict); // 'canary-is-better' | 'canary-is-worse' | ...
- * ```
- */
+/** Place AFTER canaryMiddleware. Records response time and errors per variant. */
 export function canaryMetricsMiddleware(
   collector: CanaryMetricsCollector,
   options: MetricsMiddlewareOptions,
@@ -63,7 +42,7 @@ export function canaryMetricsMiddleware(
     const start = process.hrtime.bigint();
 
     res.on('finish', () => {
-      const elapsed = Number(process.hrtime.bigint() - start) / 1_000_000; // ns → ms
+      const elapsed = Number(process.hrtime.bigint() - start) / 1_000_000;
 
       collector.record({
         experiment: experimentName,

@@ -1,10 +1,6 @@
 import { CanaryManager } from '../../core/canary-manager';
 import { CanaryUser, Variant } from '../../types';
 
-/**
- * Minimal Hono types — no dependency on hono package.
- * Works with Hono on Cloudflare Workers, Vercel Edge, Deno, Bun, and Node.js.
- */
 interface HonoContext {
   req: {
     header(name: string): string | undefined;
@@ -22,48 +18,11 @@ type HonoNext = () => Promise<void>;
 type HonoMiddleware = (c: HonoContext, next: HonoNext) => Promise<void | Response>;
 
 export interface CanaryHonoMiddlewareOptions {
-  /** The experiment to evaluate */
   experimentName: string;
-  /** Extract a CanaryUser from the Hono context */
   getUserFromContext: (c: HonoContext) => CanaryUser | null;
-  /** Set X-Canary-Variant response header (default: true) */
   setHeader?: boolean;
 }
 
-/**
- * Hono middleware that resolves a canary variant for every request.
- *
- * The variant is stored in the Hono context via c.set('canaryVariant', variant)
- * and can be retrieved in handlers via c.get('canaryVariant').
- *
- * Works on all Hono runtimes: Cloudflare Workers, Vercel Edge, Deno, Bun, Node.js.
- *
- * Usage:
- * ```ts
- * import { Hono } from 'hono';
- * import { CanaryManager, InMemoryStorage, canaryHonoMiddleware } from '@futurmille/canary-node';
- *
- * const app = new Hono();
- * const manager = new CanaryManager({ storage: new InMemoryStorage() });
- *
- * app.use('*', canaryHonoMiddleware(manager, {
- *   experimentName: 'checkout-v2',
- *   getUserFromContext: (c) => {
- *     const userId = c.req.header('x-user-id');
- *     if (!userId) return null;
- *     return { id: userId, attributes: { plan: c.req.header('x-user-plan') || 'free' } };
- *   },
- * }));
- *
- * app.get('/products/:id', (c) => {
- *   const variant = c.get('canaryVariant');
- *   if (variant === 'canary') {
- *     return c.json({ name: 'Laptop', reviews: {...} });
- *   }
- *   return c.json({ name: 'Laptop' });
- * });
- * ```
- */
 export function canaryHonoMiddleware(
   manager: CanaryManager,
   options: CanaryHonoMiddlewareOptions,
@@ -92,10 +51,7 @@ export function canaryHonoMiddleware(
   };
 }
 
-/**
- * Hono middleware that blocks non-canary users (returns 404).
- * Use for routes that should only be visible to canary users.
- */
+/** Returns 404 for stable users — the route doesn't exist for them. */
 export function canaryHonoGuard(
   manager: CanaryManager,
   options: Omit<CanaryHonoMiddlewareOptions, 'setHeader'>,
