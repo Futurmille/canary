@@ -10,13 +10,13 @@
     "LICENSE"
   ],
   "author": "Futurmille <dev@futurmille.com>",
-  "homepage": "https://github.com/ebutrera9103/canary#readme",
+  "homepage": "https://github.com/Futurmille/canary#readme",
   "bugs": {
-    "url": "https://github.com/ebutrera9103/canary/issues"
+    "url": "https://github.com/Futurmille/canary/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ebutrera9103/canary.git"
+    "url": "https://github.com/Futurmille/canary.git"
   },
   "publishConfig": {
     "access": "public",

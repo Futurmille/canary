@@ -1,6 +1,6 @@
 # @futurmille/canary
 
-[![CI](https://github.com/ebutrera9103/canary/actions/workflows/ci.yml/badge.svg)](https://github.com/ebutrera9103/canary/actions/workflows/ci.yml)
+[![CI](https://github.com/Futurmille/canary/actions/workflows/ci.yml/badge.svg)](https://github.com/Futurmille/canary/actions/workflows/ci.yml)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue.svg)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-18%20%7C%2020%20%7C%2022-green.svg)](https://nodejs.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
