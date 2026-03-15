@@ -1,0 +1,16 @@
+{
+  "name": "canary-dashboard-test",
+  "private": true,
+  "scripts": {
+    "start": "npx tsx server.ts",
+    "start:simulate": "npx tsx simulate-traffic.ts"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "@futurmille/canary": "file:../../"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "tsx": "^4.19.0"
+  }
+}
