@@ -1,5 +1,5 @@
 {
-  "name": "@canary-node/core",
+  "name": "@ebutrera9103/canary-node",
   "version": "1.0.0",
   "description": "Production-ready feature-level canary releases for Node.js applications",
   "main": "dist/index.js",
@@ -7,6 +7,13 @@
   "files": [
     "dist"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ebutrera9103/canary-node.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "scripts": {
     "build": "tsc",
     "test": "jest --coverage",
